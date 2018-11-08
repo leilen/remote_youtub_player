@@ -44,15 +44,18 @@ function play(index = playConfig["current_index"]) {
             reject();
             return;
         }
-
-        if (urlList.length == 0) {
+        const urlLength = urlList.length;
+        if (urlLength == 0) {
             reject();
             return;
         }
         isWillStop = false;
         playConfig["current_index"] = index;
+        if (playConfig["current_index"] >= urlLength){
+            playConfig["current_index"] = 0;
+        }
         savePlayConfig();
-        stream = ytdl(urlList[index]["url"])
+        stream = ytdl(urlList[playConfig["current_index"]]["url"])
         proc = new FFmpeg({ source: stream });
         proc.setFfmpegPath(ffmpegInstaller.path);
         trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
@@ -67,7 +70,7 @@ function play(index = playConfig["current_index"]) {
         })
         stream.on('info', function (vInfo, vFormat) {
             const videoInfo = vInfo['player_response']['videoDetails'];
-            console.log(`Playing ${index} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
+            console.log(`Playing ${playConfig["current_index"]} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
             resolve();
         })
         speaker.on('flush', function () {
