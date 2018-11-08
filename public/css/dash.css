@@ -1,0 +1,32 @@
+.row.attendance-button-row{
+    padding-top:10px;
+}
+.row.status-row{
+    padding-top:10px;
+}
+.row.calendar-row{
+    padding-bottom:50px;
+}
+#addRestModal .modal-body{
+    padding-bottom:30px;
+}
+.form-group#time-range>input{
+    /* width: calc((100% - 30px) * 0.45); */
+    width: 45%;
+    border-radius: 4px;
+    border-style:  solid;
+    border-width: 1px;
+    border-color:rgb(204,204,204);
+    padding:6px 12px;
+    float: left;
+}
+.form-group#time-range>label{
+    /* width: calc((100% - 30px) * 0.10); */
+    width: 10%;
+    float: left;
+    padding:6px 0px;
+    text-align: center;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered{
+    line-height: 14px !important;
+}
