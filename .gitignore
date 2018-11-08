@@ -5,3 +5,4 @@ npm-debug.log
 /public/js/bundle/
 package-lock.json
 /logs/*.log
+url_list.json

@@ -32,6 +32,7 @@
     "moment": "^2.18.1",
     "morgan": "~1.8.1",
     "nodemailer": "^4.0.1",
+    "pcm-volume": "^1.0.0",
     "pg": "^7.1.2",
     "player": "^0.6.1",
     "prop-types": "^15.6.2",

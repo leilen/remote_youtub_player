@@ -1,4 +1,7 @@
 module.exports = function(req, res, next, db, log, cRes, jwt,cPlayer) {
-    cPlayer.stop();
-    res.send();
+    cPlayer.stop().then(() =>{
+        res.send();
+    }).catch(() =>{
+        res.send();
+    });
 }

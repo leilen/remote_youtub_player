@@ -1,11 +1,11 @@
 import React, { Component, Fragment } from "react";
-import {UseConsume }  from './MainProvider.js'
+import { UseConsume } from './MainProvider.js'
 
 import Modal from './templates/Modal.js';
 
 import Select2 from 'react-select2-wrapper';
 import FullCalendar from 'fullcalendar-reactwrapper';
-import queryString from'query-string';
+import queryString from 'query-string';
 
 import 'react-select2-wrapper/css/select2.css';
 import 'fullcalendar-reactwrapper/dist/css/fullcalendar.min.css';
@@ -19,9 +19,8 @@ import {
     unWrapToArray,
     getSelectedValuesFromSelect2,
     unWrapToString,
-    returnKoreaCurrentDate,
     postSelf,
-    getRole
+    secondToString
 } from './utils/shared_functions.js';
 
 
@@ -32,74 +31,44 @@ class DashPage extends Component {
         this.loadDataFunc = this.loadDataFunc.bind(this);
         this.onInputFormTextChange = this.onInputFormTextChange.bind(this);
         this.initAllState = this.initAllState.bind(this);
-        this.attendanceButtonAction = this.attendanceButtonAction.bind(this);
+        this.playButtonAction = this.playButtonAction.bind(this);
+        this.stopButtonAction = this.stopButtonAction.bind(this);
         this.selectOnChange = this.selectOnChange.bind(this);
+        this.addButtonAction = this.addButtonAction.bind(this);
+        this.addUrlPostButtonAction = this.addUrlPostButtonAction.bind(this);
 
-        this.delegateAttenModalRef = React.createRef();
-        this.delegateAttencePersonListSelectRef = React.createRef();
-        this.restTypeListSelectRef = React.createRef();
-        this.addRestModalRef = React.createRef();
-        this.eventDetailModalRef = React.createRef();
+        this.addUrlModalRef = React.createRef();
 
         this.state = {
             inputText: {},
             data: {},
             select: {
-            },
-            selectedDate: "",
-            selectedEvent: {
-                allDay: false,
-                color: "",
-                description: "",
-                end: null,
-                id: 0,
-                "is-mine": false,
-                start: null,
-                "time-range": "[00:00:00,00:00:00]",
-                title: ""
-            },
+            }
         };
-        this.selected = {};
-        this.deleteButtonTitles = {
-            true: '취소',
-            false: '삭제하기'
-        }
-        this.deleteMode = false;
-        const queryParams = queryString.parse(location.search);
-        if (queryParams["m"]){
-            this.currentDate = new Date(queryParams["y"], queryParams["m"] - 1, 1);
-        }else{
-            this.currentDate = returnKoreaCurrentDate();
-        }
-        this.props.consume.actions.loadDataFunc = this.loadDataFunc;
     }
     componentDidMount() {
-        // this.loadDataFunc();
+        this.loadDataFunc();
     }
     loadDataFunc(callBack) {
         const self = this;
         startLoading();
-        const queryParams = queryString.parse(location.search);
-        getSelf(`/api/dash${queryParams['m'] ? `?m=${queryParams['m']}&y=${queryParams['y']}` : "" }`).then(data => {
+        getSelf(`/api/dash`).then(data => {
+            console.log(data);
             self.setState({
-                data: data["data"]
+                data: data
             })
-            if (callBack){
-                callBack();
-            }
-            self.props.consume.actions.setValue("roleArr",getRole());
             finLoading();
         }).catch(code => {
             finLoading();
-            switch(code){
+            switch (code) {
                 case 403:
-                alert(`권한이 없습니다`);
-                break;
+                    alert(`권한이 없습니다`);
+                    break;
                 default:
-                alert(`Error : ${code}`)
-                break;
+                    alert(`Error : ${code}`)
+                    break;
             }
-            
+
         });
     }
     onInputFormTextChange(e) {
@@ -117,16 +86,63 @@ class DashPage extends Component {
         this.setState({
         });
     }
-    attendanceButtonAction() {
+    playButtonAction() {
+        startLoading();
         let jsonData = {}
+        const self = this;
         postSelf(jsonData, '/api/play').then(data => {
+            finLoading();
+            self.setState({
+                data: {
+                    ...self.state.data,
+                    "is-playing": true
+                }
+            })
         }).catch(code => {
+            finLoading();
         });
     }
-    stopButtonAction(){
+    stopButtonAction() {
+        startLoading();
         let jsonData = {}
+        const self = this;
         postSelf(jsonData, '/api/stop').then(data => {
+            finLoading();
+            self.setState({
+                data: {
+                    ...self.state.data,
+                    "is-playing": false
+                }
+            })
         }).catch(code => {
+            finLoading();
+        });
+    }
+    addButtonAction() {
+        this.addUrlModalRef.current.showModal();
+        this.setState({
+            inputText:{
+                ...this.state.inputText,
+                addUrl : ""
+            }
+        })
+        
+    }
+    addUrlPostButtonAction(){
+        if (!/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/.test(this.state.inputText.addUrl)){
+            alert("YouTube URL을 입력해야됩니다.")
+            return;
+        }
+        const self = this;
+        startLoading();
+        let jsonData = {
+            "url" : this.state.inputText.addUrl
+        }
+        postSelf(jsonData, '/api/add-url').then(data => {
+            self.addUrlModalRef.current.showModal();
+            finLoading();
+        }).catch(code => {
+            finLoading();
         });
     }
     delegateAttendPost() {
@@ -177,110 +193,57 @@ class DashPage extends Component {
         }
     }
     render() {
-        const { inputText, data, selectedEvent } = this.state;
-        let restPeapleList = unWrapToArray(data["rest"]).map(v => {
-            return (
-                <div class="list-group-item">
-                    {v['nick-name']}님
-                    <span class="pull-right text-muted small"><em>{v['type']}</em></span>
-                </div>
-            )
-        })
-        let currentPeapleList = unWrapToArray(data["attendance"]).map(v => {
-            return (
-                <div class="list-group-item">
-                    {`${v['is-attendance'] ? "출근 " : "퇴근 "} ${v['nick-name']}님`}
-                    <span class="pull-right text-muted small"><em>{v['time']}</em></span>
-                </div>
-            )
-        })
-        let notYetComePeapleArr = unWrapToArray(data['all-person']);
-        var length = notYetComePeapleArr.length;
-        for (let i = 0; i < length; i++) {
-            var flag = false;
-            for (let j = 0; j < unWrapToArray(data['rest']).length; j++) {
-                if (notYetComePeapleArr[i]['nick-name'] == data['rest'][j]['nick-name']) {
-                    notYetComePeapleArr.splice(i, 1);
-                    length = length - 1;
-                    i = i - 1;
-                    flag = true;
-                    break;
-                }
-            }
-            if (flag) {
-                continue;
-            }
-            for (let j = 0; j < unWrapToArray(data['attendance']).length; j++) {
-                if (notYetComePeapleArr[i]['nick-name'] == data['attendance'][j]['nick-name']) {
-                    notYetComePeapleArr.splice(i, 1);
-                    length = length - 1;
-                    i = i - 1;
-                    break;
-                }
-            }
-        }
-        let notYetComePeapleList = notYetComePeapleArr.map(v => {
-            return (
-                <div class="list-group-item">
-                    {v['nick-name']}님
-                </div>
-            )
-        });
+        const { inputText, data } = this.state;
         return (
             <Fragment>
                 <div class="row attendance-button-row">
                     <div class="col-lg-3 col-md-6">
                         {
-                            this.state.data["is-attendance"]
-                                ? (<input type="button" class="btn btn-success btn-lg btn-block" value="퇴근하기" onClick={this.attendanceButtonAction} />)
-                                : (<input type="button" class="btn btn-primary btn-lg btn-block" value="출근하기" onClick={this.attendanceButtonAction} />)
-
+                            data["is-playing"] ? (<input type="button" class="btn btn-danger btn-lg btn-block" value="종료하기" onClick={this.stopButtonAction} />) : (<input type="button" class="btn btn-primary btn-lg btn-block" value="재생하기" onClick={this.playButtonAction} />)
                         }
                     </div>
-                </div>
-                <div class="row attendance-button-row">
                     <div class="col-lg-3 col-md-6">
-                    <input type="button" class="btn btn-success btn-lg btn-block" value="종료하기" onClick={this.stopButtonAction} />
+                        <input type="button" class="btn btn-info btn-lg btn-block" value="추가하기" onClick={this.addButtonAction} />
                     </div>
                 </div>
-                <div class="row status-row">
-                    <div class="col-lg-4">
+                <div class="row music-list-row">
+                    <div class="col-lg-6">
                         <div class="panel panel-default">
                             <div class="panel-heading">
-                                <i class="fa fa-user fa-fw"></i> 오늘 출근 안하는 분들
+                                <i class="fa fa-user fa-fw"></i> 음악 목록
                             </div>
                             <div class="panel-body">
                                 <div class="list-group">
-                                    {restPeapleList}
+                                    {
+                                        unWrapToArray(data["url-list"]).map((v, i) => {
+                                            return (
+                                                <div class={`list-group-item ${i == data["play-status"]["current_index"] ? "active" : ""}`}>
+                                                    {v["title"]}<span class="pull-right text-muted small"><em>{secondToString(v['seconds'])}</em></span>
+                                                </div>
+                                            );
+                                        })
+                                    }
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4">
-                        <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <i class="fa fa-user fa-fw"></i> 출근 기록
-                            </div>
-                            <div class="panel-body">
-                                <div class="list-group">
-                                    {currentPeapleList}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4">
-                        <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <i class="fa fa-user fa-fw"></i> 곧 오실 분들
-                            </div>
-                            <div class="panel-body">
-                                <div class="list-group">
-                                    {notYetComePeapleList}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
+                <Modal
+                    id="addUrlModalRef"
+                    title="리스트 추가"
+                    ref={this.addUrlModalRef}>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>YouTube URL</label>
+                            <input type="text" class="form-control" value={inputText.addUrl} onChange={this.onInputFormTextChange} name="addUrl" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+                        <button type="button" class="btn btn-primary" onClick={this.addUrlPostButtonAction}>추가하기</button>
+                    </div>
+                </Modal>
             </Fragment>
         );
     }

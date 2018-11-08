@@ -9,11 +9,6 @@ var index = require('./routes/index');
 
 var app = express();
 
-var session = require('express-session');
-
-var config = require('./config/config.json');
-var mailer = require('./custom_modules/mailer');
-
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -25,14 +20,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use(session({
-    key: 'lfsid',
-    secret:config.cookie_secret,  // 비밀키
-    resave:true,
-    saveUninitialized:true,
-    cookie: { maxAge : 3600000 }  //3600000 1hour
-}));
 
 app.use('/', index);
 
@@ -48,8 +35,6 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-if(config.office_ip != "1"){
-  mailer.serverStart();
-}
+
 
 module.exports = app;

@@ -241,3 +241,8 @@ export function getSelectedCompanyFromCookie() {
 export function setSelectedCompanyToCookie(cIdNum) {
     return Cookie.set('selected-company', cIdNum);
 }
+
+export function secondToString(second) {
+    const secondInt = parseInt(second);
+    return `${Math.floor(secondInt / 60)}:${secondInt % 60}`
+}
