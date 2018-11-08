@@ -14,6 +14,9 @@ let decoded = null;
 let speaker = null;
 
 module.exports.play = function () {
+    if (speaker){
+        return;
+    }
     stream = ytdl(url)
     proc = new FFmpeg({source: stream});
     proc.setFfmpegPath(ffmpegInstaller.path);
