@@ -2,6 +2,13 @@
 //      "current_index" : number - url index now playing
 //      "mode" : number - 0 : normal , 1 : repeat , 2 : random
 //      "volumn" : number - 0 ~ 1 speaker volumn
+//}
+
+// ../url_list.json{
+//      "title" : string
+//      "seconds" : int - total play seconds
+//      "volumn" : number - 0 ~ 1 speaker volumn
+//}
 
 
 
