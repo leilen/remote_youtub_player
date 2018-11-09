@@ -1,20 +1,3 @@
-// ../play_config.json{
-//      "current_index" : number - url index now playing
-//      "mode" : number - 0 : normal , 1 : repeat , 2 : random
-//      "volumn" : number - 0 ~ 1 speaker volumn
-//}
-
-// ../url_list.json{
-//      "title" : string
-//      "seconds" : int - total play seconds
-//      "volumn" : number - 0 ~ 1 speaker volumn
-//}
-
-
-
-
-
-
 const fs = require('fs');
 const ytdl = require('ytdl-core');
 var FFmpeg = require('fluent-ffmpeg');
@@ -23,6 +6,24 @@ const Speaker = require('speaker');
 const Volume = require("pcm-volume");
 
 const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
+
+if (!fs.existsSync('play_config.json')) {
+    fs.writeFileSync("play_config.json", JSON.stringify(
+        {
+            "current_index" : 0, //number - url index now playing
+            "mode" : 0, //number - 0 : normal , 1 : repeat , 2 : random
+            "volumn" : 1 //number - 0 ~ 1 speaker volumn
+        }
+    ));
+}
+if (!fs.existsSync('url_list.json')) {
+    // ../url_list.json[{
+    //      "title" : string
+    //      "seconds" : int - total play seconds
+    //      "url" : string - youtube url
+    //}]
+    fs.writeFileSync("url_list.json", JSON.stringify([]));
+}
 
 let playConfig = require('../play_config.json');
 let urlList = require("../url_list.json");

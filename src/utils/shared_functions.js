@@ -1,7 +1,6 @@
 import axios from 'axios';
 import jwtDecode from 'jwt-decode';
 import Cookie from 'js-cookie';
-// import { server_ip } from '../../config/config.json';
 
 let roleArr = [];
 let isProcessing = false;

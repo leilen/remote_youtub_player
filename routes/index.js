@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
 
-const db = require('../custom_modules/db_query');
-const crypto = require('../custom_modules/crypto2');
+// const db = require('../custom_modules/db_query');
+// const crypto = require('../custom_modules/crypto2');
 const log = require('../custom_modules/custom_logs');
-const auth = require('../custom_modules/auth');
-const jwt = require('../custom_modules/custom_jwt');
+// const auth = require('../custom_modules/auth');
+// const jwt = require('../custom_modules/custom_jwt');
 const cRes = require('../custom_modules/custom_res');
 
 const cPlayer = require('../custom_modules/custom_player');
+const db = null;
+const jwt = null;
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
