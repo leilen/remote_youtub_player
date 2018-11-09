@@ -36,8 +36,10 @@ class DashPage extends Component {
         this.selectOnChange = this.selectOnChange.bind(this);
         this.addButtonAction = this.addButtonAction.bind(this);
         this.addUrlPostButtonAction = this.addUrlPostButtonAction.bind(this);
+        this.listClickAction = this.listClickAction.bind(this);
 
         this.addUrlModalRef = React.createRef();
+        this.addUrlInputRef = React.createRef();
 
         this.state = {
             inputText: {},
@@ -86,16 +88,25 @@ class DashPage extends Component {
         this.setState({
         });
     }
-    playButtonAction() {
+    playButtonAction(url) {
         startLoading();
         let jsonData = {}
+        let currentUrl = this.state.data["play-status"]["current_url"];
+        if (url){
+            jsonData["url"] = url
+            currentUrl = url
+        }
         const self = this;
         postSelf(jsonData, '/api/play').then(data => {
             finLoading();
             self.setState({
                 data: {
                     ...self.state.data,
-                    "is-playing": true
+                    "is-playing": true,
+                    "play-status": {
+                        ...self.state.data["play-status"],
+                        "current_url" : currentUrl
+                    }
                 }
             })
         }).catch(code => {
@@ -126,6 +137,8 @@ class DashPage extends Component {
                 addUrl : ""
             }
         })
+        console.log(this.addUrlInputRef.current);
+        this.addUrlInputRef.current.focus();
         
     }
     addUrlPostButtonAction(){
@@ -139,40 +152,18 @@ class DashPage extends Component {
             "url" : this.state.inputText.addUrl
         }
         postSelf(jsonData, '/api/add-url').then(data => {
-            self.addUrlModalRef.current.showModal();
             finLoading();
+            self.addUrlModalRef.current.hideModal();
+            self.loadDataFunc();
         }).catch(code => {
             finLoading();
         });
     }
-    delegateAttendPost() {
-        const self = this;
-        const selected = unWrapToArray(this.selected.delegateAttencePersonList)
-        if (selected.length == 0) {
-            alert('요청 드릴 분을 선택해 주세요!');
-            return;
+    listClickAction(url){
+        console.log(url)
+        if (confirm("이 곡을 재생할까요?")){
+            this.playButtonAction(url);
         }
-        startLoading();
-        let formData = new FormData();
-        formData.append("pid", selected[0])
-        postSelfWithoutFile(formData, "/api/delegate-attend").then(data => {
-            alert("요청 완료!");
-            finLoading();
-            self.delegateAttenModalRef.current.hideModal();
-        }).catch(code => {
-            finLoading();
-            switch (code) {
-                case 400:
-                    alert("파라메터 에러!!");
-                    break;
-                case 402:
-                    alert("DB ERROR");
-                    break;
-                default:
-                    alert(`Error : ${code}`);
-                    break;
-            }
-        });
     }
     selectOnChange(e) {
         const name = e.target.name;
@@ -197,27 +188,25 @@ class DashPage extends Component {
         return (
             <Fragment>
                 <div class="row attendance-button-row">
-                    <div class="col-lg-3 col-md-6">
-                        {
-                            data["is-playing"] ? (<input type="button" class="btn btn-danger btn-lg btn-block" value="종료하기" onClick={this.stopButtonAction} />) : (<input type="button" class="btn btn-primary btn-lg btn-block" value="재생하기" onClick={this.playButtonAction} />)
-                        }
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <input type="button" class="btn btn-info btn-lg btn-block" value="추가하기" onClick={this.addButtonAction} />
-                    </div>
+                    {
+                        data["is-playing"] ? (<button type="button" class="btn btn-danger btn-lg play-controll" onClick={this.stopButtonAction}><i class="fa fa-stop"/></button>) : (<button type="button" class="btn btn-success btn-lg play-controll" onClick={this.playButtonAction.bind(this,null)}><i class="fa fa-play"/></button>)
+                    }
                 </div>
                 <div class="row music-list-row">
                     <div class="col-lg-6">
                         <div class="panel panel-default">
                             <div class="panel-heading">
                                 <i class="fa fa-user fa-fw"></i> 음악 목록
+                                <div class="pull-right">
+                                    <button type="button" class="btn btn-info btn-xs" onClick={this.addButtonAction}><i class="fa fa-plus"/></button>
+                                </div>
                             </div>
                             <div class="panel-body">
                                 <div class="list-group">
                                     {
                                         unWrapToArray(data["url-list"]).map((v, i) => {
                                             return (
-                                                <div class={`list-group-item ${i == data["play-status"]["current_index"] ? "active" : ""}`}>
+                                                <div class={`list-group-item clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v["url"])}>
                                                     {v["title"]}<span class="pull-right text-muted small"><em>{secondToString(v['seconds'])}</em></span>
                                                 </div>
                                             );
@@ -236,7 +225,7 @@ class DashPage extends Component {
                     <div class="modal-body">
                         <div class="form-group">
                             <label>YouTube URL</label>
-                            <input type="text" class="form-control" value={inputText.addUrl} onChange={this.onInputFormTextChange} name="addUrl" />
+                            <input ref={this.addUrlInputRef} type="text" class="form-control" value={inputText.addUrl} onChange={this.onInputFormTextChange} name="addUrl" />
                         </div>
                     </div>
                     <div class="modal-footer">

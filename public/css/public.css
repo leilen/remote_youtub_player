@@ -74,3 +74,6 @@ nav.navbar ul.nav > div.header-element > span{
     color: #f1b75e;
     text-decoration: none;
 }
+.clickable {
+	cursor: pointer;
+}
