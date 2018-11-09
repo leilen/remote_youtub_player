@@ -5,8 +5,6 @@ const decoder = require('lame').Decoder
 const Speaker = require('speaker');
 const Volume = require("pcm-volume");
 
-const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
-
 if (!fs.existsSync('play_config.json')) {
     fs.writeFileSync("play_config.json", JSON.stringify(
         {
@@ -56,9 +54,14 @@ function play(index = playConfig["current_index"]) {
             playConfig["current_index"] = 0;
         }
         savePlayConfig();
+        console.log(ffmpegInstaller.path);
         stream = ytdl(urlList[playConfig["current_index"]]["url"])
         proc = new FFmpeg({ source: stream });
-        proc.setFfmpegPath(ffmpegInstaller.path);
+        try{
+            proc.setFfmpegPath(require('@ffmpeg-installer/ffmpeg').path);
+        }catch(error){
+            proc.setFfmpegPath('/usr/local/bin/ffmpeg');
+        }
         trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
         decoded = trans.pipe(decoder());
         volumn = new Volume();
