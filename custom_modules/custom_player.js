@@ -54,7 +54,6 @@ function play(index = playConfig["current_index"]) {
             playConfig["current_index"] = 0;
         }
         savePlayConfig();
-        console.log(ffmpegInstaller.path);
         stream = ytdl(urlList[playConfig["current_index"]]["url"])
         proc = new FFmpeg({ source: stream });
         try{
