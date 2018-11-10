@@ -37,11 +37,17 @@ class DashPage extends Component {
         this.addButtonAction = this.addButtonAction.bind(this);
         this.addUrlPostButtonAction = this.addUrlPostButtonAction.bind(this);
         this.listClickAction = this.listClickAction.bind(this);
+        this.volumeClickAction = this.volumeClickAction.bind(this);
+        this.backgroundOnClickAction = this.backgroundOnClickAction.bind(this);
+        this.inputFormOnKeyPress = this.inputFormOnKeyPress.bind(this);
+        this.volumePostAction = this.volumePostAction.bind(this);
 
         this.addUrlModalRef = React.createRef();
         this.addUrlInputRef = React.createRef();
+        this.volumnSpanRef = React.createRef();
 
         this.state = {
+            isVolumeEditable : false,
             inputText: {},
             data: {},
             select: {
@@ -50,6 +56,10 @@ class DashPage extends Component {
     }
     componentDidMount() {
         this.loadDataFunc();
+        document.addEventListener('click', this.backgroundOnClickAction);
+    }
+    componentWillUnmount() {
+        document.removeEventListener('click', this.backgroundOnClickAction);
     }
     loadDataFunc(callBack) {
         const self = this;
@@ -82,6 +92,11 @@ class DashPage extends Component {
                     [name]: e.target.value
                 }
             });
+        }
+    }
+    inputFormOnKeyPress(e){
+        if (e.target.name == "volume" && e.key === 'Enter') {
+            this.volumePostAction();
         }
     }
     initAllState() {
@@ -137,7 +152,6 @@ class DashPage extends Component {
                 addUrl : ""
             }
         })
-        console.log(this.addUrlInputRef.current);
         this.addUrlInputRef.current.focus();
         
     }
@@ -160,7 +174,6 @@ class DashPage extends Component {
         });
     }
     listClickAction(url){
-        console.log(url)
         if (confirm("이 곡을 재생할까요?")){
             this.playButtonAction(url);
         }
@@ -183,14 +196,58 @@ class DashPage extends Component {
 
         }
     }
+    volumeClickAction(){
+        if (!this.state.isVolumeEditable){
+            this.setState({
+                isVolumeEditable : true,
+                inputText : {
+                    ...this.state.inputText,
+                    volume : this.state.data["play-status"]["volume"] * 10
+                }
+            })
+        }
+    }
+    backgroundOnClickAction(e){
+        const currentTarget = e.target;
+        if (!this.volumnSpanRef.current.contains(currentTarget)){
+            if (this.state.isVolumeEditable){
+                this.setState({
+                    isVolumeEditable : false
+                })
+            }
+        }
+    }
+    volumePostAction(){
+        const self = this;
+        startLoading();
+        let jsonData = {
+            "vol" : this.state.inputText.volume / 10
+        }
+        postSelf(jsonData,"/api/set-vol").then(data =>{
+            finLoading();
+            self.setState({
+                isVolumeEditable : false,
+                data:{
+                    ...self.state.data,
+                    ["play-status"] : {
+                        ...self.state.data["play-status"],
+                        volume : this.state.inputText.volume / 10
+                    }
+                }
+            })
+        }).catch(code =>{
+            finLoading();
+        });
+    }
     render() {
         const { inputText, data } = this.state;
         return (
-            <Fragment>
+            <Fragment onClick={this.backgroundOnClickAction}>
                 <div class="row attendance-button-row">
                     {
                         data["is-playing"] ? (<button type="button" class="btn btn-danger btn-lg play-controll" onClick={this.stopButtonAction}><i class="fa fa-stop"/></button>) : (<button type="button" class="btn btn-success btn-lg play-controll" onClick={this.playButtonAction.bind(this,null)}><i class="fa fa-play"/></button>)
                     }
+                    <span ref={this.volumnSpanRef} className="active clickable" onClick={this.volumeClickAction}>volume : {this.state.isVolumeEditable ? (<input id="volume" type="text" name="volume" value={this.state.inputText.volume} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>) : data["play-status"] ? data["play-status"]["volume"] * 10 : ""} </span>
                 </div>
                 <div class="row music-list-row">
                     <div class="col-lg-6">

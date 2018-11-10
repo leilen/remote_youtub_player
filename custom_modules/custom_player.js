@@ -17,7 +17,7 @@ let proc = null;
 let trans = null;
 let decoded = null;
 let speaker = null;
-let volumn = null;
+let volume = null;
 
 let isUrlListFileLocked = false;
 let isWillStop = false;
@@ -58,15 +58,15 @@ function play(url = playConfig["current_url"], isForce = false) {
         }
         trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
         decoded = trans.pipe(decoder());
-        volumn = new Volume();
-        volumn.setVolume(playConfig["volumn"]);
+        volume = new Volume();
+        volume.setVolume(playConfig["volume"]);
         speaker = new Speaker({
             channels: 2,
             bitDepth: 16,
             sampleRate: 44100
         });
-        decoded.pipe(volumn);
-        volumn.pipe(speaker);
+        decoded.pipe(volume);
+        volume.pipe(speaker);
 
         stream.on('progress', function (chunk, downloaded, total) {})
         stream.on('info', function (vInfo, vFormat) {
@@ -95,9 +95,14 @@ function play(url = playConfig["current_url"], isForce = false) {
     })
 }
 
-function stop() {
+function stop(isForce) {
     if (speaker) {
         speaker.end();
+        if (isForce){
+            nextUrl = null;
+            nextResolve = null;
+            nextReject = null;
+        }
     }
 }
 function addList(url) {
@@ -177,9 +182,11 @@ function returnPlayConfig() {
     return playConfig;
 }
 
-function setVolumn(vol) {
-    if (volumn) {
-        volumn.setVolume(vol);
+function setvolume(vol) {
+    if (volume) {
+        volume.setVolume(vol);
+        playConfig.volume = vol;
+        customConfig.setPlayConfig(playConfig);
     }
 }
 
@@ -198,4 +205,4 @@ module.exports.addList = addList;
 module.exports.getUrlList = getUrlList;
 module.exports.returnIsPlaying = returnIsPlaying;
 module.exports.returnPlayConfig = returnPlayConfig;
-module.exports.setVolumn = setVolumn;
+module.exports.setvolume = setvolume;

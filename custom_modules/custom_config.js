@@ -20,7 +20,7 @@ function generatePlayConfigFile () {
         fs.writeFileSync("config/play_config.json", JSON.stringify({
             "current_url": null, //number - url index now playing
             "mode": 0, //number - 0 : normal , 1 : repeat , 2 : random
-            "volumn": 1 //number - 0 ~ 1 speaker volumn
+            "volume": 1 //number - 0 ~ 1 speaker volume
         }));
     }
 }

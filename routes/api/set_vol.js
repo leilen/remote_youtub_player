@@ -3,6 +3,6 @@ module.exports = function(req, res, next, db, log, cRes, jwt,cPlayer) {
         cRes.sendParamErrorJSON(res);
         return;
     }
-    cPlayer.setVolumn(req.body["vol"]);
+    cPlayer.setvolume(req.body["vol"]);
     cRes.sendOKJSON(res);
 }
