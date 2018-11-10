@@ -4,6 +4,7 @@ import {browserHistory} from 'react-router';
 import queryString from 'query-string';
 
 import Select2 from 'react-select2-wrapper';
+import InfiniteScroll from "react-infinite-scroller";
 
 import 'react-select2-wrapper/css/select2.css';
 import '../public/css/search.css';
@@ -43,11 +44,13 @@ class SearchPage extends Component {
             inputText: {},
             data: {},
             select: {
-            }
+            },
         };
+        this.isCanLoadMore = true;
+        this.startPage = 0;
     }
     componentDidMount() {
-        this.loadDataFunc();
+        // this.loadDataFunc();
         document.addEventListener('click', this.backgroundOnClickAction);
         this.unlisten = this.props.history.listen((location, action) => {
             this.loadDataFunc();
@@ -57,16 +60,26 @@ class SearchPage extends Component {
         document.removeEventListener('click', this.backgroundOnClickAction);
         this.unlisten();
     }
-    loadDataFunc(callBack) {
+    loadDataFunc(page) {
+        console.log(page);
         const self = this;
         this.queryParams = queryString.parse(location.search);
         if (this.queryParams["keyword"]){
             startLoading();
-            getSelf(`/api/search?keyword=${this.queryParams["keyword"]}`).then(data => {
-                console.log(data);
-                self.setState({
-                    data: data
-                })
+            getSelf(`/api/search?keyword=${this.queryParams["keyword"]}${page > 1 ? `&page-token=${this.state.data["next-page-token"]}` : ""}`).then(data => {
+                this.isCanLoadMore = data["list"].length != 0;
+                if (page > 1){
+                    self.setState({
+                        data: {
+                            ...data,
+                            list : this.state.data.list.concat(data["list"])
+                        }
+                    })
+                }else{
+                    self.setState({
+                        data: data
+                    })
+                }
                 finLoading();
             }).catch(code => {
                 finLoading();
@@ -163,6 +176,12 @@ class SearchPage extends Component {
                             </div>
                             <div class="panel-body">
                                 <div class="list-group">
+                                    <InfiniteScroll
+                                        pageStart={this.startPage}
+                                        loadMore={this.loadDataFunc}
+                                        hasMore={this.isCanLoadMore}
+                                        useWindow={true}
+                                    >
                                     {
                                         unWrapToArray(data["list"]).map((v, i) => {
                                             return (
@@ -176,6 +195,7 @@ class SearchPage extends Component {
                                             );
                                         })
                                     }
+                                    </InfiniteScroll>
                                 </div>
                             </div>
                         </div>
