@@ -1,3 +1,5 @@
+const Ip = require('ip');
+
 function getIpFunc(req) {
     var ip = req.headers['x-forwarded-for'] ||
         req.connection.remoteAddress ||
@@ -7,5 +9,9 @@ function getIpFunc(req) {
         ip = ip.replace(/^.*:/, '')
     return ip;
 };
+function getCurrentIp(){
+    return Ip.address();
+}
 
 exports.getIp = getIpFunc;
+exports.getCurrentIp = getCurrentIp;

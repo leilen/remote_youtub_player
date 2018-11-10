@@ -4,6 +4,8 @@
  * Module dependencies.
  */
 
+require("../custom_modules/custom_config").generateConfigFile();
+
 var app = require('../app');
 var debug = require('debug')('likeafamily:server');
 var http = require('http');
