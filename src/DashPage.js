@@ -28,6 +28,7 @@ class DashPage extends Component {
     constructor(props, context) {
         super(props);
         this.componentDidMount = this.componentDidMount.bind(this);
+        this.componentDidUpdate = this.componentDidUpdate.bind(this);
         this.loadDataFunc = this.loadDataFunc.bind(this);
         this.onInputFormTextChange = this.onInputFormTextChange.bind(this);
         this.initAllState = this.initAllState.bind(this);
@@ -41,13 +42,18 @@ class DashPage extends Component {
         this.backgroundOnClickAction = this.backgroundOnClickAction.bind(this);
         this.inputFormOnKeyPress = this.inputFormOnKeyPress.bind(this);
         this.volumePostAction = this.volumePostAction.bind(this);
+        this.editListButtonAction = this.editListButtonAction.bind(this);
 
         this.addUrlModalRef = React.createRef();
         this.addUrlInputRef = React.createRef();
-        this.volumnSpanRef = React.createRef();
+        this.volumeSpanRef = React.createRef();
+        this.volumeInputRef = React.createRef();
+
+        this.isVolumeInputFirstFocus = false;
 
         this.state = {
             isVolumeEditable : false,
+            isListEditable : false,
             inputText: {},
             data: {},
             select: {
@@ -61,11 +67,18 @@ class DashPage extends Component {
     componentWillUnmount() {
         document.removeEventListener('click', this.backgroundOnClickAction);
     }
+    componentDidUpdate(){
+        if (this.state.isVolumeEditable){
+            if (this.isVolumeInputFirstFocus){
+                this.isVolumeInputFirstFocus = false;
+                this.volumeInputRef.current.select();
+            }
+        }
+      }
     loadDataFunc(callBack) {
         const self = this;
         startLoading();
         getSelf(`/api/dash`).then(data => {
-            console.log(data);
             self.setState({
                 data: data
             })
@@ -173,7 +186,7 @@ class DashPage extends Component {
             finLoading();
         });
     }
-    listClickAction(url){
+    listClickAction(url,e){
         if (confirm("이 곡을 재생할까요?")){
             this.playButtonAction(url);
         }
@@ -205,11 +218,12 @@ class DashPage extends Component {
                     volume : this.state.data["play-status"]["volume"] * 10
                 }
             })
+            this.isVolumeInputFirstFocus = true;
         }
     }
     backgroundOnClickAction(e){
         const currentTarget = e.target;
-        if (!this.volumnSpanRef.current.contains(currentTarget)){
+        if (!this.volumeSpanRef.current.contains(currentTarget)){
             if (this.state.isVolumeEditable){
                 this.setState({
                     isVolumeEditable : false
@@ -220,6 +234,15 @@ class DashPage extends Component {
     volumePostAction(){
         const self = this;
         startLoading();
+        const volumeFloat = parseFloat(this.state.inputText.volume);
+        if (!(volumeFloat && volumeFloat >= 0 && volumeFloat <= 10)){
+            finLoading();
+            alert("볼륨 값은 0 ~ 10만 가능합니다");
+            this.setState({
+                isVolumeEditable : false
+            })
+            return;
+        }
         let jsonData = {
             "vol" : this.state.inputText.volume / 10
         }
@@ -239,6 +262,26 @@ class DashPage extends Component {
             finLoading();
         });
     }
+    editListButtonAction(){
+        this.setState({
+            isListEditable : !this.state.isListEditable
+        })
+    }
+    deleteButtonAction(url,e){
+        e.stopPropagation();
+        if (confirm("이 곡을 삭제할까요?")){
+            const jsonData = {
+                url : url
+            }
+            startLoading();
+            postSelf(jsonData,"/api/delete-url").then(data => {
+                finLoading();
+                this.loadDataFunc();
+            }).catch(code => {
+                finLoading();
+            });
+        }
+    }
     render() {
         const { inputText, data } = this.state;
         return (
@@ -247,7 +290,7 @@ class DashPage extends Component {
                     {
                         data["is-playing"] ? (<button type="button" class="btn btn-danger btn-lg play-controll" onClick={this.stopButtonAction}><i class="fa fa-stop"/></button>) : (<button type="button" class="btn btn-success btn-lg play-controll" onClick={this.playButtonAction.bind(this,null)}><i class="fa fa-play"/></button>)
                     }
-                    <span ref={this.volumnSpanRef} className="active clickable" onClick={this.volumeClickAction}>volume : {this.state.isVolumeEditable ? (<input id="volume" type="text" name="volume" value={this.state.inputText.volume} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>) : data["play-status"] ? data["play-status"]["volume"] * 10 : ""} </span>
+                    <span ref={this.volumeSpanRef} className="active clickable" onClick={this.volumeClickAction}>volume : {this.state.isVolumeEditable ? (<input ref={this.volumeInputRef} id="volume" type="text" name="volume" value={this.state.inputText.volume} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>) : data["play-status"] ? data["play-status"]["volume"] * 10 : ""} </span>
                 </div>
                 <div class="row music-list-row">
                     <div class="col-lg-6">
@@ -255,7 +298,14 @@ class DashPage extends Component {
                             <div class="panel-heading">
                                 <i class="fa fa-user fa-fw"></i> 음악 목록
                                 <div class="pull-right">
-                                    <button type="button" class="btn btn-info btn-xs" onClick={this.addButtonAction}><i class="fa fa-plus"/></button>
+                                    {   
+                                        !this.state.isListEditable &&
+                                        (<button type="button" class="btn btn-info btn-xs" onClick={this.addButtonAction}><i class="fa fa-plus"/></button>)
+                                    }
+                                    {   this.state.isListEditable ?
+                                        (<button type="button" class="btn btn-success btn-xs" onClick={this.editListButtonAction}>완료</button>) :
+                                        (<button type="button" class="btn btn-warning btn-xs" onClick={this.editListButtonAction}>편집</button>)
+                                    }
                                 </div>
                             </div>
                             <div class="panel-body">
@@ -265,7 +315,11 @@ class DashPage extends Component {
                                             return (
                                                 <div class={`list-group-item url-list clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v["url"])}>
                                                     <span className="title">{v["title"]}</span>
-                                                    <span class="pull-right text-muted small time"><em>{secondToString(v['seconds'])}</em></span>
+                                                    {   
+                                                        this.state.isListEditable ?
+                                                        (<button type="button" class="btn btn-danger btn-xs" onClick={this.deleteButtonAction.bind(this,v["url"])}><i class="fa fa-remove"/></button>) :
+                                                        (<span class="pull-right text-muted small time"><em>{secondToString(v['seconds'])}</em></span>)
+                                                    }
                                                 </div>
                                             );
                                         })

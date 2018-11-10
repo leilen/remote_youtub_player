@@ -29,6 +29,9 @@ router.post('/api/stop',  function(req, res, next) {
 router.post('/api/add-url',  function(req, res, next) {
     require('./api/add_url')(req, res, next, db, log, cRes, jwt, cPlayer);
 });
+router.post('/api/delete-url',  function(req, res, next) {
+    require('./api/delete_url')(req, res, next, db, log, cRes, jwt, cPlayer);
+});
 router.post('/api/set-vol',  function(req, res, next) {
     require('./api/set_vol')(req, res, next, db, log, cRes, jwt, cPlayer);
 });

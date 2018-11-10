@@ -148,6 +148,12 @@ function addList(url,title) {
     });
 }
 
+function deleteList(url) {
+    urlList = urlList.filter( v => {
+        return v["url"] != url;
+    });
+}
+
 function saveList() {
     return new Promise(function (resolve, reject) {
         customConfig.setUrlList(urlList).then(() =>{
@@ -233,3 +239,4 @@ module.exports.getUrlList = getUrlList;
 module.exports.returnIsPlaying = returnIsPlaying;
 module.exports.returnPlayConfig = returnPlayConfig;
 module.exports.setvolume = setvolume;
+module.exports.deleteList = deleteList;

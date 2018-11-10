@@ -24,6 +24,7 @@ module.exports = function(req, res, next, db, log, cRes, jwt,cPlayer) {
     let params = {
         "type" : "video"
     };
+    console.log(req.query);
     if(req.query["page-token"]){
         params["pageToken"] = req.query["page-token"];
     }
