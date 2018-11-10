@@ -1,5 +1,5 @@
 import React, { Component,Fragment } from "react";
-import { Link } from 'react-router-dom';
+import { Link, withRouter } from 'react-router-dom';
 import {checkRoles} from '../utils/shared_functions'
 
 import { MainConsumer,UseConsume }  from '../MainProvider.js'
@@ -8,7 +8,12 @@ import { MainConsumer,UseConsume }  from '../MainProvider.js'
 class SideBar extends Component {
     constructor(props, context) {
         super(props);
+        this.onInputFormTextChange = this.onInputFormTextChange.bind(this);
+        this.inputFormOnKeyPress = this.inputFormOnKeyPress.bind(this);
+        this.searchButtonAction = this.searchButtonAction.bind(this);
+
         this.state = {
+            inputText: {},
             menuData : [
                 {
                     "href" : "/dash",
@@ -26,6 +31,27 @@ class SideBar extends Component {
         $(target).parent("li").toggleClass("active").children("ul").collapse("toggle");
         $(target).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide");
     }
+    onInputFormTextChange(e) {
+        const name = e.target.name
+        if (name) {
+            this.setState({
+                inputText: {
+                    ...this.state.inputText,
+                    [name]: e.target.value
+                }
+            });
+        }
+    }
+    inputFormOnKeyPress(e){
+        if (e.target.name == "search" && e.key === 'Enter') {
+            this.searchButtonAction();
+        }
+    }
+    searchButtonAction(){
+        if (this.state.inputText.search){
+            this.props.history.push(`/search?keyword=${this.state.inputText.search}`);
+        }
+    }
 
     render() {
         const url = window.location;
@@ -40,6 +66,16 @@ class SideBar extends Component {
                             {
                                 (consume) => (
                         <ul className="nav" id="side-menu">
+                            <li class="sidebar-search">
+                                <div class="input-group custom-search-form">
+                                    <input type="text" class="form-control" placeholder="Search..." name="search" value={this.state.inputText.search} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-default" type="button" onClick={this.searchButtonAction}>
+                                            <i class="fa fa-search"></i>
+                                        </button>
+                                    </span>
+                                </div>
+                            </li>
                             {
                                 this.state.menuData.filter(v1=>{return v1["roles"] ? consume.actions.checkRoles(v1["roles"]) : true}).map(v =>{
                                     let menuJSX;
@@ -94,4 +130,4 @@ SideBar.defaultProps = {
     auth: []
 }
 
-export default SideBar;
+export default withRouter(SideBar);

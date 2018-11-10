@@ -8,6 +8,7 @@ import Header from './templates/Header.js';
 import SideBar from './templates/SideBar.js';
 
 import DashPage from './DashPage.js';
+import SearchPage from './SearchPage.js';
 
 import { Route,Switch } from 'react-router-dom';
 
@@ -61,6 +62,9 @@ class App extends Component {
                 <div id="main-wrapper">
                     <div className={this.state.isLoginPage ? "container" : "page-wrapper"} id={this.state.isLoginPage ? false : "page-wrapper"}>
                     <Switch>
+                        <Route path="/search" render={(props) => (
+                            <SearchPage {...props} setSideBar={this.setSideBar} />
+                        )} />
                         <Route path="/" render={(props) => (
                             <DashPage {...props} setSideBar={this.setSideBar} />
                         )} />

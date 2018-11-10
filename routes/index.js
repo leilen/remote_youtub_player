@@ -13,14 +13,13 @@ const db = null;
 const jwt = null;
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-    res.render('index');
-});
 
 router.get('/api/dash',  function(req, res, next) {
     require('./api/dash')(req, res, next, db, log, cRes, jwt, cPlayer);
 });
-
+router.get('/api/search',  function(req, res, next) {
+    require('./api/search')(req, res, next, db, log, cRes, jwt, cPlayer);
+});
 router.post('/api/play',  function(req, res, next) {
     require('./api/play')(req, res, next, db, log, cRes, jwt, cPlayer);
 });
@@ -32,6 +31,10 @@ router.post('/api/add-url',  function(req, res, next) {
 });
 router.post('/api/set-vol',  function(req, res, next) {
     require('./api/set_vol')(req, res, next, db, log, cRes, jwt, cPlayer);
+});
+
+router.get('*', function(req, res, next) {
+    res.render('index');
 });
 
 module.exports = router;
