@@ -263,8 +263,9 @@ class DashPage extends Component {
                                     {
                                         unWrapToArray(data["url-list"]).map((v, i) => {
                                             return (
-                                                <div class={`list-group-item clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v["url"])}>
-                                                    {v["title"]}<span class="pull-right text-muted small"><em>{secondToString(v['seconds'])}</em></span>
+                                                <div class={`list-group-item url-list clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v["url"])}>
+                                                    <span className="title">{v["title"]}</span>
+                                                    <span class="pull-right text-muted small time"><em>{secondToString(v['seconds'])}</em></span>
                                                 </div>
                                             );
                                         })

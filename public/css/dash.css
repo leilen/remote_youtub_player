@@ -41,3 +41,22 @@ input#volume{
     width: 30px;
     text-align: center;
 }
+
+div.list-group-item.clickable.url-list{
+    display: flex;
+    -ms-flex-direction: row;
+    -webkit-flex-direction: row;
+    flex-direction: row;
+}
+
+div.list-group-item.clickable.url-list>span.title{
+    flex-shrink: 1;
+    flex-grow : 1;
+}
+div.list-group-item.clickable.url-list>span.time{
+    flex-shrink: 0;
+    flex-grow : 0;
+}
+div.list-group-item.clickable.url-list.active>span.time{
+    color:white;
+}

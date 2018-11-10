@@ -61,7 +61,6 @@ class SearchPage extends Component {
         this.unlisten();
     }
     loadDataFunc(page) {
-        console.log(page);
         const self = this;
         this.queryParams = queryString.parse(location.search);
         if (this.queryParams["keyword"]){
@@ -126,11 +125,12 @@ class SearchPage extends Component {
         this.addUrlInputRef.current.focus();
         
     }
-    addUrlPostButtonAction(url){
+    addUrlPostButtonAction(i){
         const self = this;
         startLoading();
         let jsonData = {
-            "url" : url
+            "url" : this.state.data.list[i]["url"],
+            "title" : this.state.data.list[i]["title"]
         }
         postSelf(jsonData, '/api/add-url').then(data => {
             finLoading();
@@ -138,9 +138,9 @@ class SearchPage extends Component {
             finLoading();
         });
     }
-    listClickAction(url){
+    listClickAction(i){
         if (confirm("이 곡을 추가 할까요?")){
-            this.addUrlPostButtonAction(url);
+            this.addUrlPostButtonAction(i);
         }
     }
     selectOnChange(e) {
@@ -185,7 +185,7 @@ class SearchPage extends Component {
                                     {
                                         unWrapToArray(data["list"]).map((v, i) => {
                                             return (
-                                                <div class={`list-group-item clickable search-list`} onClick={this.listClickAction.bind(this,v["url"])}>
+                                                <div class={`list-group-item clickable search-list`} onClick={this.listClickAction.bind(this,i)}>
                                                     <img src={v["th"]}/>
                                                     <div className="info-wrapper">
                                                         <div class="title">{v["title"]}</div>

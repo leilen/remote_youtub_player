@@ -71,6 +71,7 @@ function play(url = playConfig["current_url"], isForce = false) {
         stream.on('progress', function (chunk, downloaded, total) {})
         stream.on('info', function (vInfo, vFormat) {
             const videoInfo = vInfo['player_response']['videoDetails'];
+            urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
             console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
             resolve();
         })
@@ -105,15 +106,13 @@ function stop(isForce) {
         }
     }
 }
-function addList(url) {
+function addList(url,title) {
     return new Promise(function (resolve, reject) {
-        ytdl.getInfo(url).then(vInfo => {
-            const videoInfo = vInfo['player_response']['videoDetails'];
+        if (title){
             const newUrl = {
-                "title": videoInfo['title'],
-                "seconds": videoInfo['lengthSeconds'],
-                "url": videoInfo['videoId']
-
+                "title": title,
+                "url": url
+            
             }
             urlList = urlList.filter(v => {
                 return v["url"] != newUrl["url"]
@@ -124,9 +123,28 @@ function addList(url) {
             }).catch(err => {
                 reject(err);
             });
-        }).catch(err => {
-            reject(err);
-        })
+        }else{
+            ytdl.getInfo(url).then(vInfo => {
+                const videoInfo = vInfo['player_response']['videoDetails'];
+                const newUrl = {
+                    "title": videoInfo['title'],
+                    "seconds": videoInfo['lengthSeconds'],
+                    "url": videoInfo['videoId']
+
+                }
+                urlList = urlList.filter(v => {
+                    return v["url"] != newUrl["url"]
+                })
+                urlList.push(newUrl);
+                saveList().then(() => {
+                    resolve();
+                }).catch(err => {
+                    reject(err);
+                });
+            }).catch(err => {
+                reject(err);
+            })
+        }
     });
 }
 
@@ -161,7 +179,16 @@ function getNextUrl() {
             returnIndex = (currentIndex + 1) % urlList.length;
             break;
         case 2:
-            returnIndex = Math.floor(Math.random() * urlList.length);
+            if (urlList.length == 1){
+                returnIndex = 0;
+            }else{
+                while(true){
+                    returnIndex = Math.floor(Math.random() * urlList.length);
+                    if (currentIndex != returnIndex){
+                        break;
+                    }
+                }
+            }
             break;
         default:
             returnIndex = -1

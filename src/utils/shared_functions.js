@@ -242,6 +242,10 @@ export function setSelectedCompanyToCookie(cIdNum) {
 }
 
 export function secondToString(second) {
-    const secondInt = parseInt(second);
-    return `${Math.floor(secondInt / 60)}:${secondInt % 60}`
+    if(second){
+        const secondInt = parseInt(second);
+        return `${Math.floor(secondInt / 60)}:${secondInt % 60 >= 10 ? secondInt % 60 : `0${secondInt % 60}` }`
+    }else{
+        return "";
+    }
 }
