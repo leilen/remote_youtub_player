@@ -6,22 +6,27 @@
 
 require("../custom_modules/custom_config").generateConfigFile();
 
-var app = require('../app');
+var appModule = require('../app');
 var debug = require('debug')('likeafamily:server');
 var http = require('http');
+
+const customSocketIO = require("../custom_modules/custom_socket");
 
 /**
  * Get port from environment and store in Express.
  */
 
 var port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+appModule.app.set('port', port);
 
 /**
  * Create HTTP server.
  */
 
-var server = http.createServer(app);
+var server = http.createServer(appModule.app);
+customSocketIO.initIO(server)
+
+appModule.cPlayer.setCSocket(customSocketIO);
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -30,6 +35,8 @@ var server = http.createServer(app);
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
+
+
 
 /**
  * Normalize a port into a number, string, or false.

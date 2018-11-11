@@ -12,6 +12,8 @@ customConfig.generateUrlListFile();
 let playConfig = customConfig.returnPlayConfig();
 let urlList = customConfig.returnUrlList();
 
+let cSocket = null;
+
 let stream = null;
 let proc = null;
 let trans = null;
@@ -20,10 +22,10 @@ let speaker = null;
 let volume = null;
 
 let isUrlListFileLocked = false;
-let isWillStop = false;
 let nextUrl = null;
 let nextResolve = null;
 let nextReject = null;
+
 
 
 function play(url = playConfig["current_url"], isForce = false) {
@@ -71,8 +73,22 @@ function play(url = playConfig["current_url"], isForce = false) {
         stream.on('progress', function (chunk, downloaded, total) {})
         stream.on('info', function (vInfo, vFormat) {
             const videoInfo = vInfo['player_response']['videoDetails'];
-            urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
+            if (!urlList[currentIndex]["seconds"]){
+                urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
+                saveList();
+            }
             console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
+            if (cSocket){
+                let jsonData = {
+                    "isPlay" : true,
+                    "list" : {
+                        "url" : url,
+                        "title" : videoInfo['title'],
+                        "seconds" : videoInfo['lengthSeconds']
+                    }
+                }
+                cSocket.emitAll('play',jsonData);
+            }
             resolve();
         })
         speaker.on('flush', function () {
@@ -91,6 +107,8 @@ function play(url = playConfig["current_url"], isForce = false) {
                         tempReject();
                     }
                 });
+            }else{
+                cSocket.emitAll('play',false);
             }
         });
     })
@@ -114,11 +132,21 @@ function addList(url,title) {
                 "url": url
             
             }
+            let isRedendunted = false
             urlList = urlList.filter(v => {
+                if (v["url"] == newUrl["url"]){
+                    isRedendunted = true
+                }
                 return v["url"] != newUrl["url"]
             })
             urlList.push(newUrl);
             saveList().then(() => {
+                let returnJSON = {
+                    "isAdd" : true,
+                    "isRedendunted" : isRedendunted,
+                    "list" : newUrl
+                }
+                cSocket.emitAll('addList', returnJSON);
                 resolve();
             }).catch(err => {
                 reject(err);
@@ -130,13 +158,23 @@ function addList(url,title) {
                     "title": videoInfo['title'],
                     "seconds": videoInfo['lengthSeconds'],
                     "url": videoInfo['videoId']
-
                 }
+                let isRedendunted = false
                 urlList = urlList.filter(v => {
+                    if (v["url"] == newUrl["url"]){
+                        isRedendunted = true
+                    }
                     return v["url"] != newUrl["url"]
                 })
                 urlList.push(newUrl);
                 saveList().then(() => {
+                    let returnJSON = {
+                        "isAdd" : true,
+                        "isRedendunted" : isRedendunted,
+                        "list" : newUrl
+                    }
+                    cSocket.emitAll('addList', returnJSON);
+                    
                     resolve();
                 }).catch(err => {
                     reject(err);
@@ -218,9 +256,9 @@ function returnPlayConfig() {
 function setvolume(vol) {
     if (volume) {
         volume.setVolume(vol);
-        playConfig.volume = vol;
-        customConfig.setPlayConfig(playConfig);
     }
+    playConfig.volume = vol;
+    customConfig.setPlayConfig(playConfig);
 }
 
 function getIndexFromUrl(url) {
@@ -231,6 +269,10 @@ function getIndexFromUrl(url) {
     }
     return -1;
 }
+function setCSocket(_cSocket){
+    _cSocket.setCPlayer(this);
+    cSocket = _cSocket;
+}
 
 module.exports.play = play;
 module.exports.stop = stop;
@@ -240,3 +282,4 @@ module.exports.returnIsPlaying = returnIsPlaying;
 module.exports.returnPlayConfig = returnPlayConfig;
 module.exports.setvolume = setvolume;
 module.exports.deleteList = deleteList;
+module.exports.setCSocket = setCSocket;

@@ -5,7 +5,8 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
-var index = require('./routes/index');
+const cPlayer = require('./custom_modules/custom_player');
+var index = require('./routes/index').init(cPlayer);
 
 var app = express();
 
@@ -39,4 +40,10 @@ app.use(function(err, req, res, next) {
 
 
 
-module.exports = app;
+module.exports.app = app;
+module.exports.cPlayer = cPlayer;
+
+// module.exports.init = function(_cPlayer) {
+//   cPlayer = _cPlayer;
+//   return router;
+// };

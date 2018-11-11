@@ -8,7 +8,7 @@ const log = require('../custom_modules/custom_logs');
 // const jwt = require('../custom_modules/custom_jwt');
 const cRes = require('../custom_modules/custom_res');
 
-const cPlayer = require('../custom_modules/custom_player');
+let cPlayer = null;
 const db = null;
 const jwt = null;
 
@@ -40,4 +40,9 @@ router.get('*', function(req, res, next) {
     res.render('index');
 });
 
-module.exports = router;
+module.exports.init = function(_cPlayer) {
+    cPlayer = _cPlayer;
+    return router;
+};
+
+// module.exports = router;
