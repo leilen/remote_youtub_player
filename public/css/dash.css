@@ -64,3 +64,33 @@ div.list-group-item.clickable.url-list.active>span.time{
 div.pull-right>button{
     margin-left : 8px;
 }
+
+.play-view{
+    padding-left:15px;
+    display: flex;
+    -ms-flex-direction: row;
+    -webkit-flex-direction: row;
+    flex-direction: row;
+}
+
+.play-view .play-th{
+    width: 168px;
+    height: 94px;
+}
+.play-view .play-info{
+    padding-left:15px;
+}
+.play-view .play-info .title{
+    color: #f1b75e;
+}
+.play-view .play-info .current-time{
+    color: #f1b75e;
+}
+
+select.mode{
+    display: inline-block;
+    width: 80px;
+    margin-left: 10px;
+    text-align: center;
+    color:#777;
+}

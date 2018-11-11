@@ -1,5 +1,6 @@
 import React, { Component,Fragment } from "react";
 import { MainConsumer,UseConsume }  from '../MainProvider.js'
+import { Link, withRouter } from 'react-router-dom';
 
 import { 
     getSelf,
@@ -24,7 +25,7 @@ class Header extends Component {
                         <span className="icon-bar"></span>
                         <span className="icon-bar"></span>
                     </button>
-                    <a className="navbar-brand" href="/dash">Like a Juke Box</a>
+                    <Link className="navbar-brand" to="/dash">Like a Juke Box</Link>
                 </div>
             </Fragment>
         );

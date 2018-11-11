@@ -10,11 +10,13 @@ function initIO(server) {
 }
 
 function onConnectionFunction(socket) {
+    sendDash(socket);
     socket.on('disconnect', () => {
     });
     socket.on('play', onPlayFunction);
     socket.on('volume', onVolumeFunction);
     socket.on('addList', onAddListFunction);
+    socket.on('mode', onModeFunction);
 }
 
 function emitAll(event, data) {
@@ -50,6 +52,21 @@ function onAddListFunction(data) {
         emitAll('addList', returnJSON);
     }
     
+}
+function sendDash(socket){
+    let returnJSON = {
+        "url-list" : cPlayer.getUrlList(),
+        "is-playing" : cPlayer.returnIsPlaying(),
+        "play-status" : cPlayer.returnPlayConfig(),
+        "play-started-time" : cPlayer.returnPlayStartedTime()
+    }
+    socket.emit("loadDash" , returnJSON);
+}
+function onModeFunction(data) {
+    if (data["mode"]){
+        cPlayer.setMode(data["mode"]);
+        emitAll('mode', data);
+    }
 }
 
 

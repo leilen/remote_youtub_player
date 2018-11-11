@@ -43,6 +43,9 @@ class DashPage extends Component {
         this.onSocketPlay = this.onSocketPlay.bind(this);
         this.onSocketVolume = this.onSocketVolume.bind(this);
         this.onSocketAddList = this.onSocketAddList.bind(this);
+        this.onSocketMode = this.onSocketMode.bind(this);
+        this.timerFunction = this.timerFunction.bind(this);
+        this.setCurrentUrl = this.setCurrentUrl.bind(this);
 
         this.addUrlModalRef = React.createRef();
         this.addUrlInputRef = React.createRef();
@@ -57,18 +60,25 @@ class DashPage extends Component {
             inputText: {},
             data: {},
             select: {
-            }
+            },
+            currentSecond : 0,
+            currentUrl :null
         };
 
         this.socket = socketIOClient()
         this.socket.on("play",this.onSocketPlay);
         this.socket.on("volume",this.onSocketVolume);
         this.socket.on("addList",this.onSocketAddList);
+        this.socket.on("loadDash",this.loadDataFunc);
+        this.socket.on("mode",this.onSocketMode);
+
+        this.timer = null;
+        this.playStartedTime = null;
 
 
     }
     componentDidMount() {
-        this.loadDataFunc();
+        startLoading();
         document.addEventListener('click', this.backgroundOnClickAction);
     }
     componentWillUnmount() {
@@ -82,26 +92,20 @@ class DashPage extends Component {
             }
         }
       }
-    loadDataFunc(callBack) {
-        const self = this;
-        startLoading();
-        getSelf(`/api/dash`).then(data => {
-            self.setState({
-                data: data
-            })
-            finLoading();
-        }).catch(code => {
-            finLoading();
-            switch (code) {
-                case 403:
-                    alert(`권한이 없습니다`);
-                    break;
-                default:
-                    alert(`Error : ${code}`)
-                    break;
+    loadDataFunc(data) {
+        if (data["is-playing"] && data["play-started-time"]){
+            this.playStartedTime = data["play-started-time"];
+            if (!this.timer){
+                this.timerFunction();
+                this.timer = setInterval(this.timerFunction, 1000);
             }
-
+        }
+        
+        this.setState({
+            data: data
         });
+        this.setCurrentUrl()
+        finLoading();
     }
     onInputFormTextChange(e) {
         const name = e.target.name
@@ -169,20 +173,11 @@ class DashPage extends Component {
     }
     selectOnChange(e) {
         const name = e.target.name;
-        this.selected[name] = getSelectedValuesFromSelect2(this[`${name}SelectRef`])
-        if (name == "restTypeList") {
-            let selectedType = null;
-            if (this.selected[name]) {
-                if (this.selected[name].length != 0) {
-                    selectedType = this.selected[name][0];
-                }
-            }
-            if (selectedType && this.state.selectedRestType != selectedType) {
-                this.setState({
-                    selectedRestType: selectedType
-                });
-            }
-
+        if (name == "mode"){
+            startLoading();
+            this.socket.emit("mode",{
+                "mode":e.target.value
+            });
         }
     }
     volumeClickAction(){
@@ -242,16 +237,40 @@ class DashPage extends Component {
 
         }
     }
+    timerFunction(){
+        if (this.playStartedTime){
+            let sum = Math.floor(((new Date().getTime()) - this.playStartedTime)/1000)
+            if (this.state.currentUrl){
+                sum = sum >= this.state.currentUrl["seconds"] ? this.state.currentUrl["seconds"] : sum
+            }
+            this.setState({
+                currentSecond : sum
+            })
+        }
+    }
     onSocketPlay(data){
         finLoading();
+        if (this.timer){
+            clearInterval(this.timer);
+        }
+        this.playStartedTime = data["playStartedTime"];
+        this.timerFunction();
         let tempUrlList = this.state.data["url-list"];
-        for (let i in tempUrlList){
-            if (tempUrlList[i]["url"] == data["list"]["url"]){
-                tempUrlList[i] = data["list"]
-                break;
+
+        if (data["isPlay"]){
+            this.timer = setInterval(this.timerFunction, 1000);
+
+            for (let i in tempUrlList){
+                if (tempUrlList[i]["url"] == data["list"]["url"]){
+                    tempUrlList[i] = data["list"]
+                    break;
+                }
             }
         }
+        
         this.setState({
+            currentSecond : 0,
+            currentUrl : data["list"],
             data : {
                 ...this.state.data,
                 "is-playing" : data["isPlay"],
@@ -297,15 +316,69 @@ class DashPage extends Component {
             }
         })
     }
+    setCurrentUrl(){
+        for (let v of unWrapToArray(this.state.data["url-list"])){
+            if (v["url"] == this.state.data["play-status"]["current_url"]){
+                this.state.currentUrl = v;
+                this.setState({
+                    currentUrl : v
+                })
+                break;
+            }
+        }
+    }
+    onSocketMode(data){
+        finLoading();
+        if (data["mode"]){
+            this.setState({
+                data:{
+                    ...this.state.data,
+                    "play-status" :{
+                        ...this.state.data["play-status"],
+                        "mode" : data["mode"]
+                    }
+                }
+            });
+        }
+    }
     render() {
         const { inputText, data } = this.state;
         return (
             <Fragment onClick={this.backgroundOnClickAction}>
+                {
+                    this.state.currentUrl && (
+                        <div class="row attendance-button-row">
+                            <div className="play-view">
+                                {
+                                    this.state.currentUrl["th"] &&(
+                                        <div className="play-th">
+                                            <img src={this.state.currentUrl["th"]}/>
+                                        </div>
+                                    )
+                                }
+                                <div className="play-info">
+                                    <div className="title">{this.state.currentUrl ? this.state.currentUrl.title : ""}</div>
+                                    <div className="current-time">{secondToString(this.state.currentSecond)} / {this.state.currentUrl && secondToString(this.state.currentUrl["seconds"])}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
                 <div class="row attendance-button-row">
                     {
                         data["is-playing"] ? (<button type="button" class="btn btn-danger btn-lg play-controll" onClick={this.stopButtonAction}><i class="fa fa-stop"/></button>) : (<button type="button" class="btn btn-success btn-lg play-controll" onClick={this.playButtonAction.bind(this,null)}><i class="fa fa-play"/></button>)
                     }
                     <span ref={this.volumeSpanRef} className="active clickable" onClick={this.volumeClickAction}>volume : {this.state.isVolumeEditable ? (<input ref={this.volumeInputRef} id="volume" type="text" name="volume" value={this.state.inputText.volume} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>) : data["play-status"] ? data["play-status"]["volume"] * 10 : ""} </span>
+                    {
+                        this.state.data["play-status"] &&(
+                            <select class="form-control mode" value={this.state.select.mode} onChange={this.selectOnChange} name="mode">
+                                <option selected={this.state.data["play-status"]["mode"] == 0} value={0}>Normal</option>
+                                <option selected={this.state.data["play-status"]["mode"] == 1} value={1}>Repeat</option>
+                                <option selected={this.state.data["play-status"]["mode"] == 2} value={2}>Random</option>
+                            </select>
+                        )
+                    }
+
                 </div>
                 <div class="row music-list-row">
                     <div class="col-lg-6">

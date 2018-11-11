@@ -26,6 +26,8 @@ let nextUrl = null;
 let nextResolve = null;
 let nextReject = null;
 
+let playStartedTime = null;
+
 
 
 function play(url = playConfig["current_url"], isForce = false) {
@@ -77,14 +79,20 @@ function play(url = playConfig["current_url"], isForce = false) {
                 urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
                 saveList();
             }
+            urlList[currentIndex]["th"] = videoInfo["thumbnail"]["thumbnails"][0]["url"];
             console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
+
+            playStartedTime = new Date().getTime();
+
             if (cSocket){
                 let jsonData = {
                     "isPlay" : true,
+                    "playStartedTime" : playStartedTime,
                     "list" : {
                         "url" : url,
                         "title" : videoInfo['title'],
-                        "seconds" : videoInfo['lengthSeconds']
+                        "seconds" : videoInfo['lengthSeconds'],
+                        "th" : videoInfo["thumbnail"]["thumbnails"][0]["url"]
                     }
                 }
                 cSocket.emitAll('play',jsonData);
@@ -92,6 +100,7 @@ function play(url = playConfig["current_url"], isForce = false) {
             resolve();
         })
         speaker.on('flush', function () {
+            playStartedTime = null;
             speaker = null;
             if (nextUrl) {
                 play(nextUrl).then(() =>{
@@ -108,7 +117,14 @@ function play(url = playConfig["current_url"], isForce = false) {
                     }
                 });
             }else{
-                cSocket.emitAll('play',false);
+                let jsonData = {
+                    "isPlay" : false,
+                    "playStartedTime" : null,
+                    "list" : {
+                        "url" : url
+                    }
+                }
+                cSocket.emitAll('play',jsonData);
             }
         });
     })
@@ -126,8 +142,9 @@ function stop(isForce) {
 }
 function addList(url,title) {
     return new Promise(function (resolve, reject) {
+        let newUrl = {}
         if (title){
-            const newUrl = {
+            newUrl = {
                 "title": title,
                 "url": url
             
@@ -140,6 +157,9 @@ function addList(url,title) {
                 return v["url"] != newUrl["url"]
             })
             urlList.push(newUrl);
+            if (!nextUrl){
+                nextUrl = getNextUrl();
+            }
             saveList().then(() => {
                 let returnJSON = {
                     "isAdd" : true,
@@ -154,7 +174,7 @@ function addList(url,title) {
         }else{
             ytdl.getInfo(url).then(vInfo => {
                 const videoInfo = vInfo['player_response']['videoDetails'];
-                const newUrl = {
+                newUrl = {
                     "title": videoInfo['title'],
                     "seconds": videoInfo['lengthSeconds'],
                     "url": videoInfo['videoId']
@@ -167,6 +187,9 @@ function addList(url,title) {
                     return v["url"] != newUrl["url"]
                 })
                 urlList.push(newUrl);
+                if (!nextUrl){
+                    nextUrl = getNextUrl();
+                }
                 saveList().then(() => {
                     let returnJSON = {
                         "isAdd" : true,
@@ -215,7 +238,7 @@ function savePlayConfig() {
 function getNextUrl() {
     let returnIndex = 0;
     const currentIndex = getIndexFromUrl(playConfig["current_url"]);
-    switch (playConfig["mode"]) {
+    switch (parseInt(playConfig["mode"])) {
         case 0:
             returnIndex = currentIndex + 1 >= urlList.length ? -1 : currentIndex + 1
             break;
@@ -252,6 +275,9 @@ function returnIsPlaying() {
 function returnPlayConfig() {
     return playConfig;
 }
+function returnPlayStartedTime(){
+    return playStartedTime;
+}
 
 function setvolume(vol) {
     if (volume) {
@@ -273,6 +299,11 @@ function setCSocket(_cSocket){
     _cSocket.setCPlayer(this);
     cSocket = _cSocket;
 }
+function setMode(mode){
+    playConfig.mode = mode;
+    nextUrl = getNextUrl();
+    savePlayConfig();
+}
 
 module.exports.play = play;
 module.exports.stop = stop;
@@ -280,6 +311,8 @@ module.exports.addList = addList;
 module.exports.getUrlList = getUrlList;
 module.exports.returnIsPlaying = returnIsPlaying;
 module.exports.returnPlayConfig = returnPlayConfig;
+module.exports.returnPlayStartedTime = returnPlayStartedTime;
 module.exports.setvolume = setvolume;
 module.exports.deleteList = deleteList;
 module.exports.setCSocket = setCSocket;
+module.exports.setMode = setMode;
