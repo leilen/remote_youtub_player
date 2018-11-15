@@ -76,33 +76,11 @@ function play(url = playConfig["current_url"], isForce = false) {
         decoded.pipe(volume);
         volume.pipe(speaker);
 
+        let videoInfo = {};
+
         stream.on('progress', function (chunk, downloaded, total) {})
         stream.on('info', function (vInfo, vFormat) {
-            const videoInfo = vInfo['player_response']['videoDetails'];
-            if (!urlList[currentIndex]["seconds"]){
-                urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
-                saveList();
-            }
-            urlList[currentIndex]["th"] = videoInfo["thumbnail"]["thumbnails"][0]["url"];
-            console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
-
-            playStartedTime = new Date().getTime();
-
-            if (cSocket){
-                let jsonData = {
-                    "isPlay" : true,
-                    "playStartedTime" : playStartedTime,
-                    "list" : {
-                        "url" : url,
-                        "vol" : urlList[currentIndex]["vol"],
-                        "title" : videoInfo['title'],
-                        "seconds" : videoInfo['lengthSeconds'],
-                        "th" : videoInfo["thumbnail"]["thumbnails"][0]["url"]
-                    }
-                }
-                cSocket.emitAll('play',jsonData);
-            }
-            resolve();
+            videoInfo = vInfo['player_response']['videoDetails'];
         })
         speaker.on('flush', function () {
             playStartedTime = null;
@@ -131,6 +109,32 @@ function play(url = playConfig["current_url"], isForce = false) {
                 }
                 cSocket.emitAll('play',jsonData);
             }
+        });
+        speaker.on('open', function () {
+            if (!urlList[currentIndex]["seconds"]){
+                urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
+                saveList();
+            }
+            urlList[currentIndex]["th"] = videoInfo["thumbnail"]["thumbnails"][0]["url"];
+            console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
+
+            playStartedTime = new Date().getTime();
+
+            if (cSocket){
+                let jsonData = {
+                    "isPlay" : true,
+                    "playStartedTime" : playStartedTime,
+                    "list" : {
+                        "url" : url,
+                        "vol" : urlList[currentIndex]["vol"],
+                        "title" : videoInfo['title'],
+                        "seconds" : videoInfo['lengthSeconds'],
+                        "th" : videoInfo["thumbnail"]["thumbnails"][0]["url"]
+                    }
+                }
+                cSocket.emitAll('play',jsonData);
+            }
+            resolve();
         });
     })
 }
