@@ -55,6 +55,7 @@ function play(url = playConfig["current_url"], isForce = false) {
         proc = new FFmpeg({
             source: stream
         });
+        // .setStartTime(100).setDuration(10)
         try {
             proc.setFfmpegPath(require('@ffmpeg-installer/ffmpeg').path);
         } catch (error) {
