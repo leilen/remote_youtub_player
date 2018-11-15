@@ -425,7 +425,7 @@ class DashPage extends Component {
                     {
                         this.state.currentUrl &&
                         (
-                            this.state.currentUrl["vol"] &&
+                            (this.state.currentUrl["vol"] && this.state.currentUrl["vol"] != 0) &&
                             (<span style={style.musicVolumeTextInMain}>{`${this.state.currentUrl["vol"] > 0 ? "+" : ""}${this.state.currentUrl["vol"] * 10}`}</span>)
                         )
                         

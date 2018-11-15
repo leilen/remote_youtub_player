@@ -288,7 +288,14 @@ function returnPlayStartedTime(){
 
 function setvolume(vol) {
     if (volume) {
-        volume.setVolume(vol);
+        const index = getIndexFromUrl(playConfig["current_url"]);
+        let musicVol = 0
+        if (index != -1){
+            if (urlList[index]["vol"]){
+                musicVol = parseFloat(urlList[index]["vol"])
+            }
+        }
+        volume.setVolume(vol + musicVol);
     }
     playConfig.volume = vol;
     customConfig.setPlayConfig(playConfig);
