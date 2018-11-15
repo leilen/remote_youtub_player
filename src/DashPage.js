@@ -17,7 +17,8 @@ import {
     unWrapToArray,
     getSelectedValuesFromSelect2,
     unWrapToString,
-    secondToString
+    secondToString,
+    cropString
 } from './utils/shared_functions.js';
 
 
@@ -38,7 +39,7 @@ class DashPage extends Component {
         this.volumeClickAction = this.volumeClickAction.bind(this);
         this.backgroundOnClickAction = this.backgroundOnClickAction.bind(this);
         this.inputFormOnKeyPress = this.inputFormOnKeyPress.bind(this);
-        this.volumePostAction = this.volumePostAction.bind(this);
+        this.allVolumePostAction = this.allVolumePostAction.bind(this);
         this.editListButtonAction = this.editListButtonAction.bind(this);
         this.onSocketPlay = this.onSocketPlay.bind(this);
         this.onSocketVolume = this.onSocketVolume.bind(this);
@@ -46,15 +47,20 @@ class DashPage extends Component {
         this.onSocketMode = this.onSocketMode.bind(this);
         this.timerFunction = this.timerFunction.bind(this);
         this.setCurrentUrl = this.setCurrentUrl.bind(this);
+        this.musicPlayAction = this.musicPlayAction.bind(this);
+        this.changeMusicVolume = this.changeMusicVolume.bind(this);
+        this.onSocketMusicVolume = this.onSocketMusicVolume.bind(this);
 
         this.addUrlModalRef = React.createRef();
         this.addUrlInputRef = React.createRef();
         this.volumeSpanRef = React.createRef();
         this.volumeInputRef = React.createRef();
+        this.musicClickMenuModalRef = React.createRef();
 
         this.isVolumeInputFirstFocus = false;
 
         this.state = {
+            selectedMusic : null,
             isVolumeEditable : false,
             isListEditable : false,
             inputText: {},
@@ -71,6 +77,7 @@ class DashPage extends Component {
         this.socket.on("addList",this.onSocketAddList);
         this.socket.on("loadDash",this.loadDataFunc);
         this.socket.on("mode",this.onSocketMode);
+        this.socket.on("musicVolume",this.onSocketMusicVolume);
 
         this.timer = null;
         this.playStartedTime = null;
@@ -120,7 +127,7 @@ class DashPage extends Component {
     }
     inputFormOnKeyPress(e){
         if (e.target.name == "volume" && e.key === 'Enter') {
-            this.volumePostAction();
+            this.allVolumePostAction();
         }
     }
     initAllState() {
@@ -166,10 +173,14 @@ class DashPage extends Component {
         this.socket.emit("addList",jsonData);
         this.addUrlModalRef.current.hideModal();
     }
-    listClickAction(url,e){
-        if (confirm("이 곡을 재생할까요?")){
-            this.playButtonAction(url);
-        }
+    listClickAction(music,e){
+        // if (confirm("이 곡을 재생할까요?")){
+        //     this.playButtonAction(url);
+        // }
+        this.setState({
+            selectedMusic : music
+        })
+        this.musicClickMenuModalRef.current.showModal();
     }
     selectOnChange(e) {
         const name = e.target.name;
@@ -202,8 +213,7 @@ class DashPage extends Component {
             }
         }
     }
-    volumePostAction(){
-        const self = this;
+    allVolumePostAction(){
         startLoading();
         const volumeFloat = parseFloat(this.state.inputText.volume);
         if (!(volumeFloat && volumeFloat >= 0 && volumeFloat <= 10)){
@@ -341,6 +351,52 @@ class DashPage extends Component {
             });
         }
     }
+    musicPlayAction(){
+        this.playButtonAction(this.state.selectedMusic.url);
+        this.musicClickMenuModalRef.current.hideModal();
+    }
+    changeMusicVolume(e){
+        const stateVolume = this.state.selectedMusic.volume;
+        let volume = parseFloat(stateVolume) ? parseFloat(stateVolume) : 0
+        const name = e.currentTarget.name;
+        if (name == "plus"){
+            volume += 1
+        }else if(name == "minus"){
+            volume -= 1
+        }else{
+            return;
+        }
+        
+        startLoading();
+        
+        let jsonData = {
+            "url" : this.state.selectedMusic.url,
+            "vol" : volume
+        }
+        this.socket.emit('musicVolume', jsonData);
+
+    }
+    onSocketMusicVolume(data){
+        let allMusicList = this.state.data["url-list"];
+        for (let i in allMusicList){
+            if (allMusicList[i]["url"] == data["url"]){
+                allMusicList[i]["volume"] = data["volume"]
+                break;
+            }
+        }
+        let tempSelectedMusic = this.state.selectedMusic;
+        if (data["url"] == selectedMusic["url"]){
+            tempSelectedMusic["volume"] = data["volume"];
+        }
+        this.setState({
+            selectedMusic : tempSelectedMusic,
+            data:{
+                ...this.state.data,
+                "url-list" : allMusicList
+            }
+        });
+        finLoading();
+    }
     render() {
         const { inputText, data } = this.state;
         return (
@@ -401,7 +457,7 @@ class DashPage extends Component {
                                     {
                                         unWrapToArray(data["url-list"]).map((v, i) => {
                                             return (
-                                                <div class={`list-group-item url-list clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v["url"])}>
+                                                <div class={`list-group-item url-list clickable ${v["url"] == data["play-status"]["current_url"] ? "active" : ""}`} onClick={this.listClickAction.bind(this,v)}>
                                                     <span className="title">{v["title"]}</span>
                                                     {   
                                                         this.state.isListEditable ?
@@ -433,10 +489,41 @@ class DashPage extends Component {
                         <button type="button" class="btn btn-primary" onClick={this.addUrlPostButtonAction}>추가하기</button>
                     </div>
                 </Modal>
+                <Modal
+                    id="musicClickMenuModal"
+                    title={this.state.selectedMusic && cropString(this.state.selectedMusic.title,20)}
+                    ref={this.musicClickMenuModalRef}>
+                    <div class="modal-body">
+                        <div class="list-group">
+                            <div class={`list-group-item clickable`} onClick={this.musicPlayAction}>
+                                <span className="title">음악 재생</span>
+                            </div>
+                            <div class={`list-group-item`}>
+                                <span className="title">볼륨 조절</span>
+                                <span className="pull-right">
+                                    <button type="button" className="btn btn-info btn-xs" name="minus" onClick={this.changeMusicVolume}><i class="fa fa-minus"/></button>
+                                    <span style={style.volumeTextInMusicClickMenu}>{this.state.selectedMusic && (this.state.selectedMusic.volume ? this.state.selectedMusic.volume : "0")}</span>
+                                    <button type="button" className="btn btn-info btn-xs" name="plus" onClick={this.changeMusicVolume}><i class="fa fa-plus"/></button>
+                                </span>
+                            </div>
+                            {/* <div class={`list-group-item clickable`}>
+                                <span className="title">예약</span>
+                            </div> */}
+                        </div>
+                    </div>
+                </Modal>
             </Fragment>
         );
     }
 }
 
+const style = {
+    volumeTextInMusicClickMenu :{
+        "color": "#999",
+        "text-align": "center",
+        "display": "inline-block",
+        "width": "40px"
+    }
+}
 
 export default UseConsume(DashPage);

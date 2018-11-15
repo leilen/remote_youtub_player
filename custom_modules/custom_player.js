@@ -304,6 +304,17 @@ function setMode(mode){
     nextUrl = getNextUrl();
     savePlayConfig();
 }
+function setMusicVolume(data){
+    const index = getIndexFromUrl(data["url"]);
+    if (index != -1){
+        urlList[index]["volume"] = data["volume"];
+        if (playConfig["current_url"] == data["url"]){
+            volume.setVolume(playConfig.volume + parseFloat(data["volume"]));
+        }
+        saveList();
+    }
+
+}
 
 module.exports.play = play;
 module.exports.stop = stop;
@@ -316,3 +327,4 @@ module.exports.setvolume = setvolume;
 module.exports.deleteList = deleteList;
 module.exports.setCSocket = setCSocket;
 module.exports.setMode = setMode;
+module.exports.setMusicVolume = setMusicVolume;

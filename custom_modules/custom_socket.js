@@ -17,6 +17,7 @@ function onConnectionFunction(socket) {
     socket.on('volume', onVolumeFunction);
     socket.on('addList', onAddListFunction);
     socket.on('mode', onModeFunction);
+    socket.on('musicVolume', onMusicVolumeFunction);
 }
 
 function emitAll(event, data) {
@@ -67,6 +68,10 @@ function onModeFunction(data) {
         cPlayer.setMode(data["mode"]);
         emitAll('mode', data);
     }
+}
+function onMusicVolumeFunction(data) {
+    cPlayer.setMusicVolume(data);
+    emitAll('musicVolume', data);
 }
 
 

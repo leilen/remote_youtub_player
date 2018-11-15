@@ -249,3 +249,13 @@ export function secondToString(second) {
         return "0:00";
     }
 }
+export function cropString(string,length) {
+    if (!(string.length)){
+        return "";
+    }
+    if (string.length > length){
+        return string.substring(0, length) + "...";
+    }else{
+        return string;
+    }
+}
