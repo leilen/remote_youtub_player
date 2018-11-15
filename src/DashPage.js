@@ -356,13 +356,13 @@ class DashPage extends Component {
         this.musicClickMenuModalRef.current.hideModal();
     }
     changeMusicVolume(e){
-        const stateVolume = this.state.selectedMusic.volume;
+        const stateVolume = this.state.selectedMusic.vol;
         let volume = parseFloat(stateVolume) ? parseFloat(stateVolume) : 0
         const name = e.currentTarget.name;
         if (name == "plus"){
-            volume += 1
+            volume += 0.1
         }else if(name == "minus"){
-            volume -= 1
+            volume -= 0.1
         }else{
             return;
         }
@@ -371,10 +371,9 @@ class DashPage extends Component {
         
         let jsonData = {
             "url" : this.state.selectedMusic.url,
-            "vol" : volume
+            "vol" : volume.toFixed(1)
         }
         this.socket.emit('musicVolume', jsonData);
-
     }
     onSocketMusicVolume(data){
         let allMusicList = this.state.data["url-list"];
@@ -385,9 +384,7 @@ class DashPage extends Component {
             }
         }
         let tempSelectedMusic = this.state.selectedMusic;
-        if (data["url"] == selectedMusic["url"]){
-            tempSelectedMusic["volume"] = data["volume"];
-        }
+        tempSelectedMusic["vol"] = data["vol"];
         this.setState({
             selectedMusic : tempSelectedMusic,
             data:{
@@ -425,6 +422,14 @@ class DashPage extends Component {
                         data["is-playing"] ? (<button type="button" class="btn btn-danger btn-lg play-controll" onClick={this.stopButtonAction}><i class="fa fa-stop"/></button>) : (<button type="button" class="btn btn-success btn-lg play-controll" onClick={this.playButtonAction.bind(this,null)}><i class="fa fa-play"/></button>)
                     }
                     <span ref={this.volumeSpanRef} className="active clickable" onClick={this.volumeClickAction}>volume : {this.state.isVolumeEditable ? (<input ref={this.volumeInputRef} id="volume" type="text" name="volume" value={this.state.inputText.volume} onChange={this.onInputFormTextChange} onKeyPress={this.inputFormOnKeyPress}/>) : data["play-status"] ? data["play-status"]["volume"] * 10 : ""} </span>
+                    {
+                        this.state.currentUrl &&
+                        (
+                            this.state.currentUrl["vol"] &&
+                            (<span style={style.musicVolumeTextInMain}>{`${this.state.currentUrl["vol"] > 0 ? "+" : ""}${this.state.currentUrl["vol"] * 10}`}</span>)
+                        )
+                        
+                    }
                     {
                         this.state.data["play-status"] &&(
                             <select class="form-control mode" value={this.state.select.mode} onChange={this.selectOnChange} name="mode">
@@ -502,7 +507,7 @@ class DashPage extends Component {
                                 <span className="title">볼륨 조절</span>
                                 <span className="pull-right">
                                     <button type="button" className="btn btn-info btn-xs" name="minus" onClick={this.changeMusicVolume}><i class="fa fa-minus"/></button>
-                                    <span style={style.volumeTextInMusicClickMenu}>{this.state.selectedMusic && (this.state.selectedMusic.volume ? this.state.selectedMusic.volume : "0")}</span>
+                                    <span style={style.musicVolumeTextInMusicClickMenu}>{this.state.selectedMusic && (this.state.selectedMusic.vol ? `${this.state.selectedMusic.vol > 0 ? "+" : ""}${Math.floor(this.state.selectedMusic.vol * 10)}` : "0")}</span>
                                     <button type="button" className="btn btn-info btn-xs" name="plus" onClick={this.changeMusicVolume}><i class="fa fa-plus"/></button>
                                 </span>
                             </div>
@@ -518,11 +523,14 @@ class DashPage extends Component {
 }
 
 const style = {
-    volumeTextInMusicClickMenu :{
+    musicVolumeTextInMusicClickMenu : {
         "color": "#999",
         "text-align": "center",
         "display": "inline-block",
         "width": "40px"
+    },
+    musicVolumeTextInMain : {
+        "color": "#999",
     }
 }
 

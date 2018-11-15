@@ -63,7 +63,11 @@ function play(url = playConfig["current_url"], isForce = false) {
         trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
         decoded = trans.pipe(decoder());
         volume = new Volume();
-        volume.setVolume(playConfig["volume"]);
+        let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
+        if (volVal <= 0){
+            volVal = 0.1;
+        }
+        volume.setVolume(volVal);
         speaker = new Speaker({
             channels: 2,
             bitDepth: 16,
@@ -90,6 +94,7 @@ function play(url = playConfig["current_url"], isForce = false) {
                     "playStartedTime" : playStartedTime,
                     "list" : {
                         "url" : url,
+                        "vol" : urlList[currentIndex]["vol"],
                         "title" : videoInfo['title'],
                         "seconds" : videoInfo['lengthSeconds'],
                         "th" : videoInfo["thumbnail"]["thumbnails"][0]["url"]
@@ -151,10 +156,11 @@ function addList(url,title) {
             }
             let isRedendunted = false
             urlList = urlList.filter(v => {
-                if (v["url"] == newUrl["url"]){
-                    isRedendunted = true
+                if (v["url"] == url){
+                    isRedendunted = true;
+                    newUrl = v;
                 }
-                return v["url"] != newUrl["url"]
+                return v["url"] != url
             })
             urlList.push(newUrl);
             if (!nextUrl){
@@ -181,10 +187,11 @@ function addList(url,title) {
                 }
                 let isRedendunted = false
                 urlList = urlList.filter(v => {
-                    if (v["url"] == newUrl["url"]){
-                        isRedendunted = true
+                    if (v["url"] == url){
+                        isRedendunted = true;
+                        newUrl = v;
                     }
-                    return v["url"] != newUrl["url"]
+                    return v["url"] != url
                 })
                 urlList.push(newUrl);
                 if (!nextUrl){
@@ -307,9 +314,11 @@ function setMode(mode){
 function setMusicVolume(data){
     const index = getIndexFromUrl(data["url"]);
     if (index != -1){
-        urlList[index]["volume"] = data["volume"];
+        urlList[index]["vol"] = data["vol"];
         if (playConfig["current_url"] == data["url"]){
-            volume.setVolume(playConfig.volume + parseFloat(data["volume"]));
+            if (volume){
+                volume.setVolume(playConfig.volume + parseFloat(data["vol"]));
+            }
         }
         saveList();
     }
