@@ -80,3 +80,6 @@ nav.navbar ul.nav > div.header-element > span{
 .active {
 	color: #f1b75e;
 }
+.list-group-item.clickable:hover{
+    background-color: #f5f5f5;
+}
