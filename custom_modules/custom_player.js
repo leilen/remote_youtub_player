@@ -28,6 +28,8 @@ let nextReject = null;
 
 let playStartedTime = null;
 
+let retryCount = 0;
+
 
 
 function play(url = playConfig["current_url"], isForce = false) {
@@ -61,25 +63,45 @@ function play(url = playConfig["current_url"], isForce = false) {
         } catch (error) {
             proc.setFfmpegPath('/usr/local/bin/ffmpeg');
         }
-        trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
-        decoded = trans.pipe(decoder());
-        volume = new Volume();
-        let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
-        if (volVal <= 0){
-            volVal = 0.1;
+        try {
+            trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
+            decoded = trans.pipe(decoder());
+            volume = new Volume();
+            let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
+            if (volVal <= 0) {
+                volVal = 0.1;
+            }
+            volume.setVolume(volVal);
+            speaker = new Speaker({
+                channels: 2,
+                bitDepth: 16,
+                sampleRate: 44100
+            });
+            decoded.pipe(volume);
+            volume.pipe(speaker);
+        } catch (error) {
+            console.log("play error", error);
+            retryCount += 1;
+            play(retryCount > 3 ? nextUrl : playConfig["current_url"]).then(() => {
+                if (nextResolve) {
+                    let tempResolve = nextResolve;
+                    nextResolve = null;
+                    tempResolve();
+                }
+            }).catch(() => {
+                if (nextReject) {
+                    let tempReject = nextReject;
+                    nextReject = null
+                    tempReject();
+                }
+            });;
+            return;
         }
-        volume.setVolume(volVal);
-        speaker = new Speaker({
-            channels: 2,
-            bitDepth: 16,
-            sampleRate: 44100
-        });
-        decoded.pipe(volume);
-        volume.pipe(speaker);
+        retryCount = 0;
 
         let videoInfo = {};
 
-        stream.on('progress', function (chunk, downloaded, total) {})
+        stream.on('progress', function (chunk, downloaded, total) { })
         stream.on('info', function (vInfo, vFormat) {
             videoInfo = vInfo['player_response']['videoDetails'];
         })
@@ -87,32 +109,32 @@ function play(url = playConfig["current_url"], isForce = false) {
             playStartedTime = null;
             speaker = null;
             if (nextUrl) {
-                play(nextUrl).then(() =>{
-                    if (nextResolve){
+                play(nextUrl).then(() => {
+                    if (nextResolve) {
                         let tempResolve = nextResolve;
                         nextResolve = null;
                         tempResolve();
                     }
-                }).catch(() =>{
-                    if (nextReject){
+                }).catch(() => {
+                    if (nextReject) {
                         let tempReject = nextReject;
                         nextReject = null
                         tempReject();
                     }
                 });
-            }else{
+            } else {
                 let jsonData = {
-                    "isPlay" : false,
-                    "playStartedTime" : null,
-                    "list" : {
-                        "url" : url
+                    "isPlay": false,
+                    "playStartedTime": null,
+                    "list": {
+                        "url": url
                     }
                 }
-                cSocket.emitAll('play',jsonData);
+                cSocket.emitAll('play', jsonData);
             }
         });
         speaker.on('open', function () {
-            if (!urlList[currentIndex]["seconds"]){
+            if (!urlList[currentIndex]["seconds"]) {
                 urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
                 saveList();
             }
@@ -121,19 +143,19 @@ function play(url = playConfig["current_url"], isForce = false) {
 
             playStartedTime = new Date().getTime();
 
-            if (cSocket){
+            if (cSocket) {
                 let jsonData = {
-                    "isPlay" : true,
-                    "playStartedTime" : playStartedTime,
-                    "list" : {
-                        "url" : url,
-                        "vol" : urlList[currentIndex]["vol"],
-                        "title" : videoInfo['title'],
-                        "seconds" : videoInfo['lengthSeconds'],
-                        "th" : videoInfo["thumbnail"]["thumbnails"][0]["url"]
+                    "isPlay": true,
+                    "playStartedTime": playStartedTime,
+                    "list": {
+                        "url": url,
+                        "vol": urlList[currentIndex]["vol"],
+                        "title": videoInfo['title'],
+                        "seconds": videoInfo['lengthSeconds'],
+                        "th": videoInfo["thumbnail"]["thumbnails"][0]["url"]
                     }
                 }
-                cSocket.emitAll('play',jsonData);
+                cSocket.emitAll('play', jsonData);
             }
             resolve();
         });
@@ -143,46 +165,46 @@ function play(url = playConfig["current_url"], isForce = false) {
 function stop(isForce) {
     if (speaker) {
         speaker.end();
-        if (isForce){
+        if (isForce) {
             nextUrl = null;
             nextResolve = null;
             nextReject = null;
         }
     }
 }
-function addList(url,title) {
+function addList(url, title) {
     return new Promise(function (resolve, reject) {
         let newUrl = {}
-        if (title){
+        if (title) {
             newUrl = {
                 "title": title,
                 "url": url
-            
+
             }
             let isRedendunted = false
             urlList = urlList.filter(v => {
-                if (v["url"] == url){
+                if (v["url"] == url) {
                     isRedendunted = true;
                     newUrl = v;
                 }
                 return v["url"] != url
             })
             urlList.push(newUrl);
-            if (!nextUrl){
+            if (!nextUrl) {
                 nextUrl = getNextUrl();
             }
             saveList().then(() => {
                 let returnJSON = {
-                    "isAdd" : true,
-                    "isRedendunted" : isRedendunted,
-                    "list" : newUrl
+                    "isAdd": true,
+                    "isRedendunted": isRedendunted,
+                    "list": newUrl
                 }
                 cSocket.emitAll('addList', returnJSON);
                 resolve();
             }).catch(err => {
                 reject(err);
             });
-        }else{
+        } else {
             ytdl.getInfo(url).then(vInfo => {
                 const videoInfo = vInfo['player_response']['videoDetails'];
                 newUrl = {
@@ -192,24 +214,24 @@ function addList(url,title) {
                 }
                 let isRedendunted = false
                 urlList = urlList.filter(v => {
-                    if (v["url"] == url){
+                    if (v["url"] == url) {
                         isRedendunted = true;
                         newUrl = v;
                     }
                     return v["url"] != url
                 })
                 urlList.push(newUrl);
-                if (!nextUrl){
+                if (!nextUrl) {
                     nextUrl = getNextUrl();
                 }
                 saveList().then(() => {
                     let returnJSON = {
-                        "isAdd" : true,
-                        "isRedendunted" : isRedendunted,
-                        "list" : newUrl
+                        "isAdd": true,
+                        "isRedendunted": isRedendunted,
+                        "list": newUrl
                     }
                     cSocket.emitAll('addList', returnJSON);
-                    
+
                     resolve();
                 }).catch(err => {
                     reject(err);
@@ -222,7 +244,7 @@ function addList(url,title) {
 }
 
 function deleteList(url) {
-    urlList = urlList.filter( v => {
+    urlList = urlList.filter(v => {
         return v["url"] != url;
     });
     saveList();
@@ -230,9 +252,9 @@ function deleteList(url) {
 
 function saveList() {
     return new Promise(function (resolve, reject) {
-        customConfig.setUrlList(urlList).then(() =>{
+        customConfig.setUrlList(urlList).then(() => {
             resolve();
-        }).catch(() =>{
+        }).catch(() => {
             reject();
         });
     });
@@ -240,9 +262,9 @@ function saveList() {
 
 function savePlayConfig() {
     return new Promise(function (resolve, reject) {
-        customConfig.setPlayConfig(playConfig).then(() =>{
+        customConfig.setPlayConfig(playConfig).then(() => {
             resolve();
-        }).catch(() =>{
+        }).catch(() => {
             reject();
         });
     });
@@ -259,12 +281,12 @@ function getNextUrl() {
             returnIndex = (currentIndex + 1) % urlList.length;
             break;
         case 2:
-            if (urlList.length == 1){
+            if (urlList.length == 1) {
                 returnIndex = 0;
-            }else{
-                while(true){
+            } else {
+                while (true) {
                     returnIndex = Math.floor(Math.random() * urlList.length);
-                    if (currentIndex != returnIndex){
+                    if (currentIndex != returnIndex) {
                         break;
                     }
                 }
@@ -288,7 +310,7 @@ function returnIsPlaying() {
 function returnPlayConfig() {
     return playConfig;
 }
-function returnPlayStartedTime(){
+function returnPlayStartedTime() {
     return playStartedTime;
 }
 
@@ -296,8 +318,8 @@ function setvolume(vol) {
     if (volume) {
         const index = getIndexFromUrl(playConfig["current_url"]);
         let musicVol = 0
-        if (index != -1){
-            if (urlList[index]["vol"]){
+        if (index != -1) {
+            if (urlList[index]["vol"]) {
                 musicVol = parseFloat(urlList[index]["vol"])
             }
         }
@@ -315,21 +337,21 @@ function getIndexFromUrl(url) {
     }
     return -1;
 }
-function setCSocket(_cSocket){
+function setCSocket(_cSocket) {
     _cSocket.setCPlayer(this);
     cSocket = _cSocket;
 }
-function setMode(mode){
+function setMode(mode) {
     playConfig.mode = mode;
     nextUrl = getNextUrl();
     savePlayConfig();
 }
-function setMusicVolume(data){
+function setMusicVolume(data) {
     const index = getIndexFromUrl(data["url"]);
-    if (index != -1){
+    if (index != -1) {
         urlList[index]["vol"] = data["vol"];
-        if (playConfig["current_url"] == data["url"]){
-            if (volume){
+        if (playConfig["current_url"] == data["url"]) {
+            if (volume) {
                 volume.setVolume(playConfig.volume + parseFloat(data["vol"]));
             }
         }
