@@ -225,6 +225,7 @@ function deleteList(url) {
     urlList = urlList.filter( v => {
         return v["url"] != url;
     });
+    saveList();
 }
 
 function saveList() {
