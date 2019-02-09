@@ -30,6 +30,44 @@ let playStartedTime = null;
 
 let retryCount = 0;
 
+process.on('uncaughtException', function (error) {
+    if (
+        error.toString() == 'Error: Input stream error: This video is unavailable.' ||
+        error.toString() == 'Error: Input stream error: This video is no longer available because the YouTube account associated with this video has been terminated.'
+    ) {
+        deleteList(playConfig["current_url"]);
+        play(nextUrl).then(() => {
+            if (nextResolve) {
+                let tempResolve = nextResolve;
+                nextResolve = null;
+                tempResolve();
+            }
+        }).catch(() => {
+            if (nextReject) {
+                let tempReject = nextReject;
+                nextReject = null
+                tempReject();
+            }
+        });
+    } else {
+        console.log(error.toString())
+        speaker = null;
+        retryCount += 1;
+        play(retryCount > 3 ? nextUrl : playConfig["current_url"]).then(() => {
+            if (nextResolve) {
+                let tempResolve = nextResolve;
+                nextResolve = null;
+                tempResolve();
+            }
+        }).catch(() => {
+            if (nextReject) {
+                let tempReject = nextReject;
+                nextReject = null
+                tempReject();
+            }
+        });;
+    }
+})
 
 
 function play(url = playConfig["current_url"], isForce = false) {
@@ -63,81 +101,33 @@ function play(url = playConfig["current_url"], isForce = false) {
         } catch (error) {
             proc.setFfmpegPath('/usr/local/bin/ffmpeg');
         }
-        try {
-            trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
-            decoded = trans.pipe(decoder());
-            volume = new Volume();
-            let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
-            if (volVal <= 0) {
-                volVal = 0.1;
-            }
-            volume.setVolume(volVal);
-            speaker = new Speaker({
-                channels: 2,
-                bitDepth: 16,
-                sampleRate: 44100
-            });
-            decoded.pipe(volume);
-            volume.pipe(speaker);
-        } catch (error) {
-            console.log("play error", error);
-            retryCount += 1;
-            play(retryCount > 3 ? nextUrl : playConfig["current_url"]).then(() => {
-                if (nextResolve) {
-                    let tempResolve = nextResolve;
-                    nextResolve = null;
-                    tempResolve();
-                }
-            }).catch(() => {
-                if (nextReject) {
-                    let tempReject = nextReject;
-                    nextReject = null
-                    tempReject();
-                }
-            });;
-            return;
+        trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
+        decoded = trans.pipe(decoder());
+        volume = new Volume();
+        let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
+        if (volVal <= 0) {
+            volVal = 0.1;
         }
-        retryCount = 0;
+        volume.setVolume(volVal);
+        speaker = new Speaker({
+            channels: 2,
+            bitDepth: 16,
+            sampleRate: 44100
+        });
+        decoded.pipe(volume);
+        volume.pipe(speaker);
+
 
         let videoInfo = {};
-        stream.on('error', function (error) {
-            if (error.toString() == 'Error: This video is unavailable.') {
-                deleteList(playConfig["current_url"]);
-                play(nextUrl).then(() => {
-                    if (nextResolve) {
-                        let tempResolve = nextResolve;
-                        nextResolve = null;
-                        tempResolve();
-                    }
-                }).catch(() => {
-                    if (nextReject) {
-                        let tempReject = nextReject;
-                        nextReject = null
-                        tempReject();
-                    }
-                });
-            } else {
-                retryCount += 1;
-                play(retryCount > 3 ? nextUrl : playConfig["current_url"]).then(() => {
-                    if (nextResolve) {
-                        let tempResolve = nextResolve;
-                        nextResolve = null;
-                        tempResolve();
-                    }
-                }).catch(() => {
-                    if (nextReject) {
-                        let tempReject = nextReject;
-                        nextReject = null
-                        tempReject();
-                    }
-                });;
-            }
-        })
         stream.on('progress', function (chunk, downloaded, total) { })
         stream.on('info', function (vInfo, vFormat) {
             videoInfo = vInfo['player_response']['videoDetails'];
+            retryCount = 0;
         })
         speaker.on('flush', function () {
+            if (retryCount != 0){
+                return;
+            }
             playStartedTime = null;
             speaker = null;
             if (nextUrl) {
@@ -277,6 +267,9 @@ function addList(url, title) {
 
 function deleteList(url) {
     urlList = urlList.filter(v => {
+        if (v["url"] == url){
+            console.log(`Deleted ${v['title']}`)
+        }
         return v["url"] != url;
     });
     saveList();
