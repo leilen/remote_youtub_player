@@ -100,7 +100,39 @@ function play(url = playConfig["current_url"], isForce = false) {
         retryCount = 0;
 
         let videoInfo = {};
-
+        stream.on('error', function (error) {
+            if (error.toString() == 'Error: This video is unavailable.') {
+                deleteList(playConfig["current_url"]);
+                play(nextUrl).then(() => {
+                    if (nextResolve) {
+                        let tempResolve = nextResolve;
+                        nextResolve = null;
+                        tempResolve();
+                    }
+                }).catch(() => {
+                    if (nextReject) {
+                        let tempReject = nextReject;
+                        nextReject = null
+                        tempReject();
+                    }
+                });
+            } else {
+                retryCount += 1;
+                play(retryCount > 3 ? nextUrl : playConfig["current_url"]).then(() => {
+                    if (nextResolve) {
+                        let tempResolve = nextResolve;
+                        nextResolve = null;
+                        tempResolve();
+                    }
+                }).catch(() => {
+                    if (nextReject) {
+                        let tempReject = nextReject;
+                        nextReject = null
+                        tempReject();
+                    }
+                });;
+            }
+        })
         stream.on('progress', function (chunk, downloaded, total) { })
         stream.on('info', function (vInfo, vFormat) {
             videoInfo = vInfo['player_response']['videoDetails'];
