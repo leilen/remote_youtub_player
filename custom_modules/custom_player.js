@@ -29,6 +29,7 @@ let nextReject = null;
 let playStartedTime = null;
 
 let retryCount = 0;
+let lastDataSize = 0;
 
 process.on('uncaughtException', function (error) {
     if (
@@ -119,7 +120,11 @@ function play(url = playConfig["current_url"], isForce = false) {
 
 
         let videoInfo = {};
-        stream.on('progress', function (chunk, downloaded, total) { })
+        stream.on('progress', function (chunk, downloaded, total) {
+            console.log('progress',downloaded/total,total); 
+            lastDataSize = downloaded/total;
+            setTimeout(checkIsAborted,10000,downloaded/total);
+        })
         stream.on('info', function (vInfo, vFormat) {
             videoInfo = vInfo['player_response']['videoDetails'];
             retryCount = 0;
@@ -383,6 +388,14 @@ function setMusicVolume(data) {
         saveList();
     }
 
+}
+function checkIsAborted(beforeDataSize){
+    if (beforeDataSize == 1){
+        return;
+    }
+    if (beforeDataSize == lastDataSize){
+        stop();
+    }
 }
 
 module.exports.play = play;
