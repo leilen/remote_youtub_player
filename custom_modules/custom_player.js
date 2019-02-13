@@ -121,7 +121,6 @@ function play(url = playConfig["current_url"], isForce = false) {
 
         let videoInfo = {};
         stream.on('progress', function (chunk, downloaded, total) {
-            console.log('progress',downloaded/total,total); 
             lastDataSize = downloaded/total;
             setTimeout(checkIsAborted,10000,downloaded/total);
         })
@@ -394,6 +393,7 @@ function checkIsAborted(beforeDataSize){
         return;
     }
     if (beforeDataSize == lastDataSize){
+        console.log("Aborted!!");
         stop();
     }
 }
