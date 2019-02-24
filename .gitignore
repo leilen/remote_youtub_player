@@ -7,3 +7,5 @@ package-lock.json
 /logs/*.log
 url_list.json
 play_config.json
+mp3/*
+!.keep

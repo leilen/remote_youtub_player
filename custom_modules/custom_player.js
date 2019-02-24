@@ -3,8 +3,15 @@ var FFmpeg = require('fluent-ffmpeg');
 const decoder = require('lame').Decoder
 const Speaker = require('speaker');
 const Volume = require("pcm-volume");
+const fs = require("fs");
+const mv = require('mv');
+const diskspace = require('diskspace');
+
+
+const dir = './mp3';
 
 const customConfig = require("./custom_config");
+const customDaemon = require("./custom_daemon");
 
 customConfig.generatePlayConfigFile();
 customConfig.generateUrlListFile();
@@ -12,11 +19,10 @@ customConfig.generateUrlListFile();
 let playConfig = customConfig.returnPlayConfig();
 let urlList = customConfig.returnUrlList();
 
+customDaemon.init(dir,downloadMp3,getUrlList,setFreespace);
+
 let cSocket = null;
 
-let stream = null;
-let proc = null;
-let trans = null;
 let decoded = null;
 let speaker = null;
 let volume = null;
@@ -29,7 +35,9 @@ let nextReject = null;
 let playStartedTime = null;
 
 let retryCount = 0;
-let lastDataSize = 0;
+let freeSpace = 0;
+
+setFreespace();
 
 process.on('uncaughtException', function (error) {
     if (
@@ -71,12 +79,10 @@ process.on('uncaughtException', function (error) {
 })
 
 
-function play(url = playConfig["current_url"], isForce = false) {
-    return new Promise(function (resolve, reject) {
+async function play(url = playConfig["current_url"], isForce = false) {
+    return new Promise(async function (resolve, reject) {
         if (speaker) {
             nextUrl = url;
-            nextResolve = resolve;
-            nextReject = reject;
             stop();
             return;
         }
@@ -92,99 +98,74 @@ function play(url = playConfig["current_url"], isForce = false) {
         }
         savePlayConfig();
         nextUrl = getNextUrl();
-        stream = ytdl(playConfig["current_url"])
-        proc = new FFmpeg({
-            source: stream
-        });
-        // .setStartTime(100).setDuration(10)
-        try {
-            proc.setFfmpegPath(require('@ffmpeg-installer/ffmpeg').path);
-        } catch (error) {
-            proc.setFfmpegPath('/usr/local/bin/ffmpeg');
-        }
-        trans = proc.withAudioCodec('libmp3lame').toFormat('mp3');
-        decoded = trans.pipe(decoder());
-        volume = new Volume();
-        let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
-        if (volVal <= 0) {
-            volVal = 0.1;
-        }
-        volume.setVolume(volVal);
-        speaker = new Speaker({
-            channels: 2,
-            bitDepth: 16,
-            sampleRate: 44100
-        });
-        decoded.pipe(volume);
-        volume.pipe(speaker);
 
+        if (await isUrlFileExists(playConfig["current_url"])) {
 
-        let videoInfo = {};
-        stream.on('progress', function (chunk, downloaded, total) {
-            lastDataSize = downloaded/total;
-            setTimeout(checkIsAborted,10000,downloaded/total);
-        })
-        stream.on('info', function (vInfo, vFormat) {
-            videoInfo = vInfo['player_response']['videoDetails'];
-            retryCount = 0;
-        })
-        speaker.on('flush', function () {
-            if (retryCount != 0){
-                return;
+            let fileStream = fs.createReadStream(`${dir}/${playConfig["current_url"]}`);
+
+            decoded = fileStream.pipe(decoder());
+
+            volume = new Volume();
+            let volVal = playConfig["volume"] + (urlList[currentIndex]["vol"] ? parseFloat(urlList[currentIndex]["vol"]) : 0)
+            if (volVal <= 0) {
+                volVal = 0.1;
             }
-            playStartedTime = null;
-            speaker = null;
-            if (nextUrl) {
-                play(nextUrl).then(() => {
-                    if (nextResolve) {
-                        let tempResolve = nextResolve;
-                        nextResolve = null;
-                        tempResolve();
+            volume.setVolume(volVal);
+            speaker = new Speaker({
+                channels: 2,
+                bitDepth: 16,
+                sampleRate: 44100
+            });
+            decoded.pipe(volume);
+            volume.pipe(speaker);
+
+
+            speaker.on('flush', function () {
+                playStartedTime = null;
+                speaker = null;
+                if (nextUrl) {
+                    play(nextUrl);
+                } else {
+                    let jsonData = {
+                        "isPlay": false,
+                        "playStartedTime": null,
+                        "list": {
+                            "url": url
+                        }
                     }
-                }).catch(() => {
-                    if (nextReject) {
-                        let tempReject = nextReject;
-                        nextReject = null
-                        tempReject();
-                    }
-                });
-            } else {
-                let jsonData = {
-                    "isPlay": false,
-                    "playStartedTime": null,
-                    "list": {
-                        "url": url
-                    }
+                    cSocket.emitAll('play', jsonData);
                 }
-                cSocket.emitAll('play', jsonData);
-            }
-        });
-        speaker.on('open', function () {
-            if (!urlList[currentIndex]["seconds"]) {
-                urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
-                saveList();
-            }
-            urlList[currentIndex]["th"] = videoInfo["thumbnail"]["thumbnails"][0]["url"];
-            console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['lengthSeconds']}sec`)
+            });
+            speaker.on('open', function () {
+                const videoInfo = urlList[currentIndex];
+                console.log(`Playing ${currentIndex} - ${videoInfo['title']} - ${videoInfo['seconds']}sec`)
 
-            playStartedTime = new Date().getTime();
+                playStartedTime = new Date().getTime();
 
-            if (cSocket) {
-                let jsonData = {
-                    "isPlay": true,
-                    "playStartedTime": playStartedTime,
-                    "list": {
-                        "url": url,
-                        "vol": urlList[currentIndex]["vol"],
-                        "title": videoInfo['title'],
-                        "seconds": videoInfo['lengthSeconds'],
-                        "th": videoInfo["thumbnail"]["thumbnails"][0]["url"]
+                if (cSocket) {
+                    let jsonData = {
+                        "isPlay": true,
+                        "playStartedTime": playStartedTime,
+                        "list": {
+                            "url": url,
+                            "vol": urlList[currentIndex]["vol"],
+                            "title": videoInfo['title'],
+                            "seconds": videoInfo['seconds'],
+                            "th": videoInfo["th"]
+                        }
                     }
+                    cSocket.emitAll('play', jsonData);
                 }
-                cSocket.emitAll('play', jsonData);
+                resolve();
+            });
+        } else {
+            try{
+                await downloadMp3(playConfig["current_url"])
+                await play(playConfig["current_url"])
+            }catch(e){
+                throw(e);
             }
-            resolve();
-        });
+        }
     })
 }
 
@@ -271,7 +252,7 @@ function addList(url, title) {
 
 function deleteList(url) {
     urlList = urlList.filter(v => {
-        if (v["url"] == url){
+        if (v["url"] == url) {
             console.log(`Deleted ${v['title']}`)
         }
         return v["url"] != url;
@@ -388,14 +369,95 @@ function setMusicVolume(data) {
     }
 
 }
-function checkIsAborted(beforeDataSize){
-    if (beforeDataSize == 1){
-        return;
+async function downloadMp3(url) {
+    let retryCount = 0;
+    let lastDataSize = 0;
+    try {
+        await donwload(url);
+        if (lastDataSize != 1) {
+            console.log(`Retrying download ${url} :${retryCount++}`);
+            downloaded(url);
+        } else {
+            fileMv(`${dir}/${url}_temp`,`${dir}/${url}`)
+            console.log(`Fin download ${url}`);
+        }
+    } catch (e) {
+        throw (e);
     }
-    if (beforeDataSize == lastDataSize){
-        console.log("Aborted!!");
-        stop();
+    function donwload(url) {
+        return new Promise(function (resolve, reject) {
+            let dStream = null;
+            let dProc = null;
+            let dTrans = null;
+
+            dStream = ytdl(url)
+            dProc = new FFmpeg({
+                source: dStream
+            });
+            try {
+                dProc.setFfmpegPath(require('@ffmpeg-installer/ffmpeg').path);
+            } catch (error) {
+                dProc.setFfmpegPath('/usr/local/bin/ffmpeg');
+            }
+            dTrans = dProc.withAudioCodec('libmp3lame').toFormat('mp3');
+            let fileStream = fs.createWriteStream(`${dir}/${url}_temp`);
+            dTrans.pipe(fileStream);
+
+            fileStream.on("finish", function () {
+                resolve();
+                setFreespace();
+            });
+            fileStream.on("error", function (err) {
+                reject(err);
+            })
+            dStream.on("error", function (err) {
+                reject(err);
+            })
+            dStream.on('progress', function (chunk, downloaded, total) {
+                lastDataSize = downloaded / total;
+            })
+            dStream.on('info', function (vInfo, vFormat) {
+                let videoInfo = {};
+                const currentIndex = getIndexFromUrl(url);
+                videoInfo = vInfo['player_response']['videoDetails'];
+                urlList[currentIndex]["seconds"] = videoInfo['lengthSeconds'];
+                urlList[currentIndex]["th"] = videoInfo["thumbnail"]["thumbnails"][0]["url"];
+                saveList();
+            })
+        });
     }
+}
+function isUrlFileExists(url) {
+    return new Promise(function (resolve, reject) {
+        fs.exists(`${dir}/${url}`, function (exists) {
+            resolve(exists);
+        });
+    });
+}
+function fileMv(source,dest){
+    return new Promise(function (resolve, reject) {
+        mv(source,dest,function(err){
+            if (err){
+                reject(err)
+            }else{
+                resolve();
+            }
+        });
+    });
+}
+function getFreeSpace(){
+    return freeSpace;
+}
+function setFreespace(){
+    diskspace.check('/', function (err, result){
+        if (err){
+        }else{
+            if (freeSpace != result["free"]){
+                cSocket.emitAll('changed-free-space', result["free"]);
+            }
+            freeSpace = result["free"];
+        }
+    });
 }
 
 module.exports.play = play;
@@ -410,3 +472,4 @@ module.exports.deleteList = deleteList;
 module.exports.setCSocket = setCSocket;
 module.exports.setMode = setMode;
 module.exports.setMusicVolume = setMusicVolume;
+module.exports.getFreeSpace = getFreeSpace;

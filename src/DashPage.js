@@ -50,6 +50,7 @@ class DashPage extends Component {
         this.musicPlayAction = this.musicPlayAction.bind(this);
         this.changeMusicVolume = this.changeMusicVolume.bind(this);
         this.onSocketMusicVolume = this.onSocketMusicVolume.bind(this);
+        this.onChangedFreeSpace = this.onChangedFreeSpace.bind(this);
 
         this.addUrlModalRef = React.createRef();
         this.addUrlInputRef = React.createRef();
@@ -78,6 +79,7 @@ class DashPage extends Component {
         this.socket.on("loadDash",this.loadDataFunc);
         this.socket.on("mode",this.onSocketMode);
         this.socket.on("musicVolume",this.onSocketMusicVolume);
+        this.socket.on("changed-free-space",this.onChangedFreeSpace);
 
         this.timer = null;
         this.playStartedTime = null;
@@ -394,6 +396,14 @@ class DashPage extends Component {
         });
         finLoading();
     }
+    onChangedFreeSpace(data){
+        this.setState({
+            data:{
+                ...this.state.data,
+                "free-space" : data
+            }
+        });
+    }
     render() {
         const { inputText, data } = this.state;
         return (
@@ -447,6 +457,7 @@ class DashPage extends Component {
                             <div class="panel-heading">
                                 <i class="fa fa-user fa-fw"></i> 음악 목록
                                 <div class="pull-right">
+                                    <span className="free-space">{(this.state.data["free-space"] / 1024 / 1024 / 1024).toFixed(2)}GB</span>
                                     {   
                                         !this.state.isListEditable &&
                                         (<button type="button" class="btn btn-info btn-xs" onClick={this.addButtonAction}><i class="fa fa-plus"/></button>)

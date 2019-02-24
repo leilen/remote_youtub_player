@@ -27,11 +27,16 @@ function setCPlayer(_cPlayer) {
     cPlayer = _cPlayer;
 }
 
-function onPlayFunction(data) {
-    if (data["isPlay"]) {
-        cPlayer.play(data["url"]);
-    } else {
-        cPlayer.stop(true);
+async function onPlayFunction(data) {
+    try {
+        if (data["isPlay"]) {
+            await cPlayer.play(data["url"]);
+        } else {
+            console.log("stop")
+            await cPlayer.stop(true);
+        }
+    } catch (e) {
+        console.log(e)
     }
 }
 function onVolumeFunction(data) {
@@ -41,30 +46,31 @@ function onVolumeFunction(data) {
     }
 }
 function onAddListFunction(data) {
-    if (data["isAdd"]){
-        cPlayer.addList(data["url"]).then(returnedAddData =>{
+    if (data["isAdd"]) {
+        cPlayer.addList(data["url"]).then(returnedAddData => {
         });
-    }else{
+    } else {
         cPlayer.deleteList(data["url"]);
         let returnJSON = {
-            "isAdd" : false,
-            "list" : {url : data["url"]}
+            "isAdd": false,
+            "list": { url: data["url"] }
         }
         emitAll('addList', returnJSON);
     }
-    
+
 }
-function sendDash(socket){
+function sendDash(socket) {
     let returnJSON = {
-        "url-list" : cPlayer.getUrlList(),
-        "is-playing" : cPlayer.returnIsPlaying(),
-        "play-status" : cPlayer.returnPlayConfig(),
-        "play-started-time" : cPlayer.returnPlayStartedTime()
+        "url-list": cPlayer.getUrlList(),
+        "is-playing": cPlayer.returnIsPlaying(),
+        "play-status": cPlayer.returnPlayConfig(),
+        "free-space": cPlayer.getFreeSpace(),
+        "play-started-time": cPlayer.returnPlayStartedTime()
     }
-    socket.emit("loadDash" , returnJSON);
+    socket.emit("loadDash", returnJSON);
 }
 function onModeFunction(data) {
-    if (data["mode"]){
+    if (data["mode"]) {
         cPlayer.setMode(data["mode"]);
         emitAll('mode', data);
     }
